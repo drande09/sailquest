@@ -1,6 +1,8 @@
 // ---- first-person "boat view" renderer: pseudo-3D from just behind the helm ----
 const FP = {
   t: 0,
+  swell: 0,
+  _lastT: 0,
 
   // perspective helpers set up per-frame
   _setup(game) {
@@ -8,7 +10,12 @@ const FP = {
     this.W = Render.W; this.H = Render.H;
     this.ctx = Render.ctx;
     this.f = this.H * 0.9;                       // focal length
-    this.horizon = this.H * 0.38;
+    // gentle pitch/bob so the sea feels alive; stronger in more wind
+    const bob = Math.sin(Render.t * 1.3) * 3 + Math.sin(Render.t * 2.1 + 1) * 2;
+    this.horizon = this.H * 0.38 + bob * (0.6 + game.wind.kn / 18);
+    const dt = clamp(Render.t - this._lastT, 0, 0.1);
+    this._lastT = Render.t;
+    this.swell += (2.5 + Math.abs(p.spd)) * dt;  // waves roll toward the viewer as you sail
     this.cb = p.p.lengthM * 1.7 + 2.2;           // camera distance behind boat center
     this.camH = 1.6 + p.p.lengthM * 0.55;        // camera height above water
     this.ppr = this.W / (95 * RAD);              // pixels per radian for sky billboards
@@ -73,6 +80,9 @@ const FP = {
       ctx.fill();
     }
 
+    // seagulls
+    this.drawGulls(p);
+
     // wind chevrons in the sky: show which way the wind BLOWS relative to your bow
     const travelRel = angDiff(p.heading, angNorm(wind.from + Math.PI));
     this.drawWindChevrons(travelRel, wind);
@@ -82,6 +92,15 @@ const FP = {
     sea.addColorStop(0, '#7fb8dc'); sea.addColorStop(0.12, '#1f77b8'); sea.addColorStop(1, '#0a4a8c');
     ctx.fillStyle = sea;
     ctx.fillRect(-M, this.horizon, W + 2 * M, H - this.horizon + M);
+
+    // distant islands on the horizon (fixed landmarks — help you keep your bearings)
+    this.drawIslands(p);
+
+    // glitter path under the sun
+    if (Math.abs(relSun) < 55 * RAD) this.drawSunGlitter(W / 2 + relSun * this.ppr);
+
+    // rolling swell bands sweeping toward the viewer
+    this.drawSwell(wind);
 
     // sparkle grid anchored to the world (flows past as you sail)
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
@@ -166,6 +185,122 @@ const FP = {
       ctx.globalAlpha = 1;
     }
     this.drawObjectiveArrow(game);
+  },
+
+  drawGulls(p) {
+    const { ctx, W } = this;
+    for (let i = 0; i < 3; i++) {
+      const az = angNorm(i * 2.1 + this.t * (0.02 + i * 0.008));
+      const rel = angDiff(p.heading, az);
+      if (Math.abs(rel) > 60 * RAD) continue;
+      const x = W / 2 + rel * this.ppr;
+      const y = this.horizon * (0.32 + 0.18 * Math.sin(i * 5 + this.t * 0.4));
+      const flap = Math.sin(this.t * 7 + i * 2.4) * 6;
+      const s = 8 + i * 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - s, y - flap * 0.4);
+      ctx.quadraticCurveTo(x - s * 0.4, y - flap, x, y);
+      ctx.quadraticCurveTo(x + s * 0.4, y - flap, x + s, y - flap * 0.4);
+      ctx.stroke();
+    }
+  },
+
+  drawIslands(p) {
+    const { ctx, W } = this;
+    const islands = [
+      { az: 1.9, w: 150, h: 30, palm: true },
+      { az: 3.8, w: 260, h: 44, palm: false },
+      { az: 5.5, w: 100, h: 22, palm: true },
+    ];
+    for (const is of islands) {
+      const rel = angDiff(p.heading, angNorm(is.az));
+      if (Math.abs(rel) > 75 * RAD) continue;
+      const x = W / 2 + rel * this.ppr;
+      const y = this.horizon + 1;
+      // hazy mound
+      const g = ctx.createLinearGradient(0, y - is.h, 0, y);
+      g.addColorStop(0, 'rgba(70,140,90,0.85)');
+      g.addColorStop(1, 'rgba(45,100,70,0.9)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x - is.w / 2, y);
+      ctx.quadraticCurveTo(x - is.w * 0.2, y - is.h, x + is.w * 0.1, y - is.h * 0.8);
+      ctx.quadraticCurveTo(x + is.w * 0.35, y - is.h * 0.5, x + is.w / 2, y);
+      ctx.closePath(); ctx.fill();
+      // beach strip
+      ctx.fillStyle = 'rgba(240,220,170,0.7)';
+      ctx.fillRect(x - is.w / 2, y - 2, is.w, 2.5);
+      // palm
+      if (is.palm) {
+        const px = x + is.w * 0.05, py = y - is.h * 0.75;
+        ctx.strokeStyle = 'rgba(90,60,35,0.9)'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(px, y - 2); ctx.quadraticCurveTo(px + 4, py + 8, px + 7, py); ctx.stroke();
+        ctx.strokeStyle = 'rgba(50,120,60,0.9)'; ctx.lineWidth = 2;
+        for (let a = 0; a < 5; a++) {
+          const fa = a / 4 * Math.PI - Math.PI * 0.1 + Math.sin(this.t * 1.5) * 0.05;
+          ctx.beginPath();
+          ctx.moveTo(px + 7, py);
+          ctx.quadraticCurveTo(px + 7 + Math.cos(fa) * 10, py - Math.sin(fa) * 9, px + 7 + Math.cos(fa) * 17, py - Math.sin(fa) * 9 + 5);
+          ctx.stroke();
+        }
+      }
+      // reflection shimmer
+      ctx.fillStyle = 'rgba(70,140,90,0.16)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 6, is.w * 0.42, 5, 0, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  drawSunGlitter(sunX) {
+    const { ctx } = this;
+    for (let k = 1; k < 15; k++) {
+      const d = 4 + k * k * 1.1;
+      const y = this.horizon + this.camH * this.f / d;
+      if (y > this.H) break;
+      const w = clamp(this.f * 0.5 / d, 6, 90);
+      const flick = 0.5 + 0.5 * Math.sin(this.t * 9 + k * 2.7);
+      ctx.fillStyle = `rgba(255,240,190,${0.28 * flick * clamp(1 - k / 16, 0.2, 1)})`;
+      const jx = Math.sin(k * 13.7 + this.t * 2) * w * 0.4;
+      ctx.fillRect(sunX - w / 2 + jx, y, w, clamp(80 / d, 1.5, 5));
+    }
+  },
+
+  drawSwell(wind) {
+    const { ctx, W, H } = this;
+    const M = 140;
+    const rough = clamp(wind.kn / 18, 0.3, 1);
+    const SP = 16; // wave spacing (m)
+    for (let i = 7; i >= 0; i--) {
+      const d = 3 + i * SP - (this.swell % SP);
+      if (d < 2) continue;
+      const y = this.horizon + this.camH * this.f / d;
+      if (y > H + M) continue;
+      const amp = clamp(90 / d, 1.5, 16) * rough;
+      ctx.beginPath();
+      ctx.moveTo(-M, y);
+      for (let x = -M; x <= W + M; x += 30) {
+        ctx.lineTo(x, y + Math.sin(x * 0.014 + i * 2 + this.t * 1.2) * amp);
+      }
+      ctx.lineTo(W + M, H + M);
+      ctx.lineTo(-M, H + M);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(8,48,95,${0.07 + 0.02 * (7 - i)})`;
+      ctx.fill();
+      // foam crests when it's breezy
+      if (wind.kn > 9 && d < 60) {
+        ctx.strokeStyle = `rgba(255,255,255,${clamp(0.5 - d / 120, 0.06, 0.3) * rough})`;
+        ctx.lineWidth = clamp(30 / d, 1, 4);
+        ctx.beginPath();
+        for (let x = -M; x <= W + M; x += 30) {
+          const yy = y + Math.sin(x * 0.014 + i * 2 + this.t * 1.2) * amp;
+          if (Math.sin(x * 0.05 + i * 7) > 0.4) { ctx.moveTo(x, yy); ctx.lineTo(x + 18, yy + 1); }
+        }
+        ctx.stroke();
+      }
+    }
   },
 
   drawWindChevrons(travelRel, wind) {
@@ -265,6 +400,21 @@ const FP = {
       const pulse = 1 + 0.08 * Math.sin(this.t * 4 + o.wx);
       ctx.beginPath(); ctx.arc(pr.x, pr.y - R * 0.9, R * pulse, 0, TAU); ctx.stroke();
       ctx.shadowBlur = 0;
+      // sparkles orbiting the target ring
+      if (o.data.next) {
+        ctx.fillStyle = '#fff';
+        for (let k = 0; k < 6; k++) {
+          const a = this.t * 2.2 + k * TAU / 6;
+          const sx = pr.x + Math.cos(a) * R * 1.15, sy = pr.y - R * 0.9 + Math.sin(a) * R * 1.15;
+          const tw = 0.5 + 0.5 * Math.sin(this.t * 7 + k * 2);
+          ctx.globalAlpha = tw;
+          const ss = clamp(R * 0.08, 2, 6);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - ss); ctx.lineTo(sx + ss * 0.4, sy); ctx.lineTo(sx, sy + ss); ctx.lineTo(sx - ss * 0.4, sy);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
       // reflection
       ctx.globalAlpha = 0.25;
       ctx.beginPath(); ctx.ellipse(pr.x, pr.y + R * 0.15, R * 0.9, R * 0.18, 0, 0, TAU); ctx.stroke();
@@ -414,12 +564,46 @@ const FP = {
     ctx.closePath();
     ctx.fill();
 
+    // wooden plank seams across the deck
+    ctx.strokeStyle = 'rgba(80,45,18,0.3)'; ctx.lineWidth = 1.5;
+    for (const fr of [0.28, 0.5, 0.72]) {
+      const py = lerp(bowY, Math.min(sternY, H + 10), fr);
+      const pw = lerp(bowW, sternW, fr) * lerp(0.85, 1.05, fr);
+      ctx.beginPath(); ctx.moveTo(cx - pw, py); ctx.lineTo(cx + pw, py); ctx.stroke();
+    }
+
     // ---- rig ----
     const sail = SAILS.find(x => x.id === p.cosmetics.sail) || SAILS[0];
     if (p.p.hull === 'ship') this.ownSquareRig(p, sail, yAt, wAt, cx);
     else this.ownForeAft(p, wind, sail, yAt, wAt, cx);
 
-    // tiller hint: little rudder indicator on the stern
+    // little sailor, hiking out to windward (dinghies only)
+    if (p.p.hull === 'pram' || p.p.hull === 'board' || p.p.hull === 'skiff') {
+      const lean = Math.sin(p.heel) * 60; // heel>0 = leans left, sailor sits right
+      const sx = cx + lean;
+      const sy = Math.min(sternY, H) - 68;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.sin(p.heel) * 0.25);
+      // life jacket
+      ctx.fillStyle = '#ff8c1a';
+      ctx.beginPath();
+      ctx.moveTo(-20, 30); ctx.quadraticCurveTo(-24, 2, -12, -4);
+      ctx.lineTo(12, -4); ctx.quadraticCurveTo(24, 2, 20, 30);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(0, 26); ctx.stroke();
+      // head + cap
+      ctx.fillStyle = '#ffd9a8';
+      ctx.beginPath(); ctx.arc(0, -16, 13, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#e04b3a';
+      ctx.beginPath(); ctx.arc(0, -20, 13, Math.PI, 0); ctx.fill();
+      ctx.fillRect(-13, -21, 26, 4);
+      ctx.restore();
+    }
+
+    // tiller: follows your rudder input
     ctx.strokeStyle = '#5a3d20'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(cx, Math.min(sternY - 8, H - 12));
@@ -484,6 +668,36 @@ const FP = {
     ctx.closePath();
     this.paintOwnSail(sail.id, cx, mastTopY, bex, bey, mastBaseY);
     ctx.strokeStyle = 'rgba(60,60,70,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+
+    // sail panel seams
+    ctx.strokeStyle = 'rgba(100,100,110,0.25)'; ctx.lineWidth = 1.5;
+    for (const fr of [0.3, 0.55, 0.78]) {
+      ctx.beginPath();
+      ctx.moveTo(cx, lerp(mastTopY, mastBaseY, fr));
+      ctx.quadraticCurveTo(lerp(cx, bellyX, 0.7), lerp(lerp(mastTopY, mastBaseY, fr), bey, 0.5), lerp(cx, bex, 0.92), lerp(lerp(mastTopY, mastBaseY, fr) * 0.6, bey, 0.65));
+      ctx.stroke();
+    }
+    // telltale: a red yarn that TELLS you your trim (streams = good, droops = too tight, whips = flapping)
+    const ttx = lerp(cx, bex, 0.3), tty = lerp(mastTopY, bey, 0.42);
+    ctx.strokeStyle = '#e04b3a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ttx, tty);
+    if (p.luffing) {
+      ctx.quadraticCurveTo(ttx + Math.sin(this.t * 26) * 16, tty - 10 + Math.cos(this.t * 21) * 10, ttx + Math.sin(this.t * 30) * 22, tty + Math.cos(this.t * 26) * 14);
+    } else if (p.overtrimmed) {
+      ctx.quadraticCurveTo(ttx + 4, tty + 12, ttx + 2 + Math.sin(this.t * 3) * 2, tty + 22);
+    } else {
+      const dirX = bex > cx ? 1 : -1;
+      ctx.quadraticCurveTo(ttx + dirX * 12, tty + Math.sin(this.t * 8) * 2, ttx + dirX * 22, tty + Math.sin(this.t * 8 + 1) * 3);
+    }
+    ctx.stroke();
+
+    // mainsheet: line from boom end down to the stern
+    ctx.strokeStyle = 'rgba(240,240,235,0.75)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bex, bey);
+    ctx.quadraticCurveTo((bex + cx) / 2, (bey + this.H) / 2 + 14, cx, Math.min(this.horizon + this.camH * this.f / (this.cb - len * 0.42), this.H - 6));
+    ctx.stroke();
 
     // boom
     ctx.strokeStyle = '#5a3d20'; ctx.lineWidth = clamp(sM * 0.05, 3, 11); ctx.lineCap = 'round';

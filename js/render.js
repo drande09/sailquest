@@ -5,6 +5,7 @@ const Render = {
   t: 0,
   particles: [],   // {x,y,vx,vy,life,maxLife,size,color}
   floaters: [],    // floating score texts {x,y,text,life,color}
+  confetti: [],    // screen-space celebration bits
   showCone: true,
 
   init() {
@@ -41,6 +42,40 @@ const Render = {
   },
   floatText(x, y, text, color = '#ffe14d') {
     this.floaters.push({ x, y, text, life: 0, color });
+  },
+
+  spawnConfetti(n = 100) {
+    const cols = ['#ff4b6e', '#ffb84d', '#ffe14d', '#4dd463', '#3db5ff', '#9b6bff', '#ff8ad4', '#fff'];
+    for (let i = 0; i < n; i++) {
+      this.confetti.push({
+        x: rand(this.W), y: -20 - rand(this.H * 0.4),
+        vx: rand(-60, 60), vy: rand(90, 260),
+        rot: rand(TAU), vr: rand(-8, 8),
+        w: rand(5, 11), h: rand(8, 16),
+        color: randPick(cols), life: 0, maxLife: rand(2.2, 3.6),
+        sway: rand(1.5, 4), phase: rand(TAU),
+      });
+    }
+  },
+  drawConfetti(dt) {
+    if (!this.confetti.length) return;
+    const ctx = this.ctx;
+    for (let i = this.confetti.length - 1; i >= 0; i--) {
+      const c = this.confetti[i];
+      c.life += dt;
+      c.x += (c.vx + Math.sin(c.life * c.sway + c.phase) * 60) * dt;
+      c.y += c.vy * dt;
+      c.rot += c.vr * dt;
+      if (c.life > c.maxLife || c.y > this.H + 30) { this.confetti.splice(i, 1); continue; }
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.rot);
+      ctx.globalAlpha = clamp((c.maxLife - c.life) / 0.6, 0, 1);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h * Math.abs(Math.sin(c.life * 5 + c.phase)) + 2);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   },
 
   // ================= WATER =================

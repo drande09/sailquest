@@ -249,6 +249,7 @@ const Game = {
   },
 
   showResults(title, bodyHtml) {
+    Render.spawnConfetti(140);
     setTimeout(() => {
       this.running = false;
       $('hud').classList.add('hidden');
@@ -265,7 +266,7 @@ const Game = {
     if (name === 'tackDone') {
       Progress.data.counters.tacks++;
       Progress.checkMission('tack1');
-      if (data.keep > 0.5 && data.quick) {
+      if (data.keep > 0.45 && data.quick) {
         this.cleanTackStreak++;
         const bonus = 25 + Math.min(this.cleanTackStreak - 1, 4) * 5;
         Progress.addStars(bonus, 'Clean tack!' + (this.cleanTackStreak > 1 ? ` x${this.cleanTackStreak}` : ''));
@@ -471,6 +472,7 @@ const Game = {
       Render.drawBoat(this.player, this.wind, true);
       Render.drawEffects();
     }
+    Render.drawConfetti(dt);
   },
 };
 

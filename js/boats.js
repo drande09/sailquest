@@ -96,6 +96,7 @@ class Boat {
     this.inIrons = false;
     this.ironsTime = 0;
     this.frozen = false;      // pre-start
+    this.paceMul = 1;         // difficulty handicap for AI boats
     this.cosmetics = { sail: 'white', hull: 'wood', flag: 'burgee' };
     this.wakeTimer = 0;
     this.soak = 0;            // 0..100 battle
@@ -158,7 +159,7 @@ class Boat {
     this.ironsTime = this.inIrons ? this.ironsTime + dt : 0;
 
     // ----- speed -----
-    let target = polarLookup(p.polar, aDeg) * wind.kn * eff * KN2MS * p.sailArea;
+    let target = polarLookup(p.polar, aDeg) * wind.kn * eff * KN2MS * p.sailArea * this.paceMul;
     target = Math.min(target, p.maxKn * KN2MS);
     if (this.inIrons && this.ironsTime > 1) target = -0.45; // drift backwards
     if (this.knockedOut > 0) target = 0;
@@ -201,8 +202,8 @@ class Boat {
       this._zoneEnterT += dt;
       if (aDeg < 20) this._crossedBow = true;
       if (!inZone) {
-        if (this._crossedBow && this._zoneEnterT < 7) {
-          this._emit('tackDone', { keep: this.spd / this._zoneEnterSpd, quick: this._zoneEnterT < 4 });
+        if (this._crossedBow && this._zoneEnterT < 8) {
+          this._emit('tackDone', { keep: this.spd / this._zoneEnterSpd, quick: this._zoneEnterT < 5 });
         }
         if (this.ironsTime > 3.5) this._emit('ironsEscape');
         this._zoneEnterSpd = null;

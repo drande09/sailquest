@@ -94,6 +94,7 @@ const Progress = {
     if (!m) return;
     this.data.missionsDone[id] = true;
     UI.toast(`🏅 Mission: ${m.name}!`, 'gold');
+    if (typeof Render !== 'undefined' && Render.spawnConfetti) Render.spawnConfetti(90);
     if (m.stars) this.addStars(m.stars, m.name);
     if (m.reward) this.unlockCos(m.reward.kind, m.reward.id);
     this.save();

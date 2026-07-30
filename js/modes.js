@@ -91,7 +91,7 @@ class RingRun extends BaseMode {
   constructor(g) {
     super(g);
     this.rings = [];
-    this.time = 75;
+    this.time = 90;
     this.got = 0;
     // zigzag pattern that forces upwind work then a downwind run home
     const up = dirVec(g.wind.from);
@@ -102,7 +102,7 @@ class RingRun extends BaseMode {
       const side = i % 2 ? 1 : -1;
       const a = g.wind.from + side * beat;
       const d = dirVec(a);
-      px += d.x * 75; py += d.y * 75;
+      px += d.x * 60; py += d.y * 60;
       this.rings.push({ x: px, y: py, got: false });
     }
     for (let i = 0; i < 4; i++) {
@@ -121,12 +121,12 @@ class RingRun extends BaseMode {
     this.rings.forEach(r => r.next = false);
     if (nr) nr.next = true;
     for (const r of this.rings) {
-      if (r.got || dist(p.x, p.y, r.x, r.y) >= 9) continue;
+      if (r.got || dist(p.x, p.y, r.x, r.y) >= 11) continue;
       r.got = true; this.got++;
-      this.time += 6;
+      this.time += 8;
       this.score += 25;
       Sound.ding();
-      Render.floatText(r.x, r.y, '+25 ✨ +6s');
+      Render.floatText(r.x, r.y, '+25 ✨ +8s');
       Render.spawnParticles(r.x, r.y, 14, { spd: 5, size: 0.5, color: 'rgba(255,225,77,' });
       if (!this.nextRing()) this.finish(true);
     }
@@ -155,11 +155,11 @@ class RingRun extends BaseMode {
 class TimeTrial extends BaseMode {
   constructor(g) {
     super(g);
-    this.course = buildCourse(g.wind, g.player.x, g.player.y - 0, 230);
-    // put player just below the start line
+    this.course = buildCourse(g.wind, g.player.x, g.player.y - 0, 180);
+    // put player just below the start line, on an easy close reach
     const up = this.course.up;
     g.player.x -= up.x * 30; g.player.y -= up.y * 30;
-    g.player.heading = angNorm(g.wind.from + (g.player.p.noGo + 15) * RAD);
+    g.player.heading = angNorm(g.wind.from + (g.player.p.noGo + 25) * RAD);
     this.wpIndex = 0;
     this.time = 0;
     this.started = false;
@@ -186,7 +186,7 @@ class TimeTrial extends BaseMode {
     const isBest = Progress.setBestTime(key, this.time);
     Progress.checkMission('ttfinish');
     if (this.g.player.typeId === 'opti') Progress.checkMission('ttfast', this.time < 180);
-    const stars = Math.max(10, Math.round(90 - this.time / 4));
+    const stars = Math.max(20, Math.round(100 - this.time / 3));
     Progress.addStars(stars, 'Time Trial');
     this.g.showResults('⏱️ Time Trial', `
       <div>Your time: <b>${fmtTime(this.time)}</b></div>
@@ -211,17 +211,18 @@ class TimeTrial extends BaseMode {
 class RaceMode extends BaseMode {
   constructor(g) {
     super(g);
-    this.course = buildCourse(g.wind, g.player.x, g.player.y, 230);
+    this.course = buildCourse(g.wind, g.player.x, g.player.y, 190);
     const up = this.course.up, right = this.course.right;
     g.player.x -= up.x * 30 + right.x * 10; g.player.y -= up.y * 30 + right.y * 10;
-    g.player.heading = angNorm(g.wind.from + (g.player.p.noGo + 15) * RAD);
+    g.player.heading = angNorm(g.wind.from + (g.player.p.noGo + 25) * RAD);
     this.racers = [];
     const typeId = g.player.typeId;
     for (let i = 0; i < 3; i++) {
       const off = (i + 1) * 14;
       const r = makeAIBoat(typeId,
         g.player.x + right.x * off, g.player.y + right.y * off,
-        g.player.heading, AI_NAMES[i].name, AI_NAMES[i].cos, 0.55 + i * 0.14);
+        g.player.heading, AI_NAMES[i].name, AI_NAMES[i].cos, 0.35 + i * 0.1);
+      r.boat.paceMul = 0.8;
       r.wpIndex = 0;
       r.boat.frozen = true;
       r.finished = null;
@@ -266,11 +267,15 @@ class RaceMode extends BaseMode {
       this.wpIndex++;
       if (!this.course.seq[this.wpIndex]) this.finish();
     }
-    // AI
+    // AI (rubber-banded: they slow down when ahead so the race stays close & winnable)
+    const myProg = this.progressOf(this.wpIndex, p.x, p.y);
     for (const r of this.racers) {
       const rw = this.course.seq[Math.min(r.wpIndex, this.course.seq.length - 1)];
       r.ai.target = rw;
       r.ai.update(dt, this.g.wind);
+      const gap = this.progressOf(r.wpIndex, r.boat.x, r.boat.y) - myProg;
+      const targetPace = gap > 50 ? 0.6 : gap < -70 ? 0.95 : 0.8;
+      r.boat.paceMul += (targetPace - r.boat.paceMul) * clamp(dt * 0.5, 0, 1);
       r.boat.update(dt, this.g.wind);
       if (r.finished === null && dist(r.boat.x, r.boat.y, rw.x, rw.y) < 16) {
         r.wpIndex++;
@@ -325,7 +330,8 @@ class BattleMode extends BaseMode {
         g.player.x + Math.cos(a) * r, g.player.y + Math.sin(a) * r,
         rand(TAU), AI_NAMES[(i + 1) % 4].name, AI_NAMES[(i + 1) % 4].cos, 0.6);
       e.boat.soakVisible = true;
-      e.shootCd = rand(2, 4);
+      e.boat.paceMul = 0.85;
+      e.shootCd = rand(4, 7);
       e.orbitA = a;
       this.enemies.push(e);
     }
@@ -333,12 +339,13 @@ class BattleMode extends BaseMode {
   }
   shoot(from, to, friendly) {
     const d = dist(from.x, from.y, to.x, to.y);
+    const spread = friendly ? 0.06 : 0.16; // rival aim is wobbly
     const t = d / 26; // lead the target
     const tv = dirVec(to.heading);
     const aimX = to.x + tv.x * to.spd * t, aimY = to.y + tv.y * to.spd * t;
     const a = Math.atan2(aimX - from.x, -(aimY - from.y));
     for (let i = 0; i < 4; i++) {
-      const sp = 26 + rand(-2, 2), aa = a + rand(-0.06, 0.06);
+      const sp = (friendly ? 30 : 24) + rand(-2, 2), aa = a + rand(-spread, spread);
       const dv = dirVec(aa);
       this.projectiles.push({
         x: from.x + dv.x * from.p.lengthM * 0.5, y: from.y + dv.y * from.p.lengthM * 0.5,
@@ -355,14 +362,14 @@ class BattleMode extends BaseMode {
 
     // player shooting
     if (g.keys[' '] && this.cooldown <= 0) {
-      let best = null, bd = 75;
+      let best = null, bd = 90;
       for (const e of this.enemies) {
         if (e.boat.knockedOut > 0) continue;
         const d = dist(p.x, p.y, e.boat.x, e.boat.y);
         if (d < bd) { bd = d; best = e; }
       }
-      if (best) { this.shoot(p, best.boat, true); this.cooldown = 0.45; }
-      else { this.cooldown = 0.3; g.coach.say('Get closer to squirt! (within 75m) 💦', 3); }
+      if (best) { this.shoot(p, best.boat, true); this.cooldown = 0.4; }
+      else { this.cooldown = 0.3; g.coach.say('Get closer to squirt! 💦', 3); }
     }
 
     // enemies sail & shoot
@@ -373,9 +380,9 @@ class BattleMode extends BaseMode {
       e.ai.update(dt, g.wind);
       e.boat.update(dt, g.wind);
       e.shootCd -= dt;
-      if (e.shootCd <= 0 && e.boat.knockedOut <= 0 && dist(p.x, p.y, e.boat.x, e.boat.y) < 70) {
+      if (e.shootCd <= 0 && e.boat.knockedOut <= 0 && dist(p.x, p.y, e.boat.x, e.boat.y) < 55) {
         this.shoot(e.boat, p, false);
-        e.shootCd = rand(2.2, 4.5);
+        e.shootCd = rand(4, 7);
       }
     }
 
@@ -388,9 +395,9 @@ class BattleMode extends BaseMode {
         if (pr.friendly) {
           for (const e of this.enemies) {
             if (e.boat.knockedOut > 0) continue;
-            if (dist(pr.x, pr.y, e.boat.x, e.boat.y) < e.boat.p.lengthM * 0.7 + 1.5) {
+            if (dist(pr.x, pr.y, e.boat.x, e.boat.y) < e.boat.p.lengthM * 0.7 + 2.5) {
               dead = true;
-              e.boat.soak += 14;
+              e.boat.soak += 20;
               this.hits++;
               this.score += 10;
               Sound.splash();
@@ -409,7 +416,7 @@ class BattleMode extends BaseMode {
           }
         } else if (dist(pr.x, pr.y, p.x, p.y) < p.p.lengthM * 0.7 + 1.5) {
           dead = true;
-          p.soak += 12;
+          p.soak += 9;
           Sound.splash();
           Render.spawnParticles(pr.x, pr.y, 10, { spd: 4, size: 0.5, color: 'rgba(120,210,255,' });
           if (p.soak >= 100) {
