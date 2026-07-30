@@ -26,11 +26,18 @@ function buildCourse(wind, startX, startY, legLen) {
   const lm = { x: startX - up.x * legLen * 0.25, y: startY - up.y * legLen * 0.25, color: '#ffd400', label: 'Mark 2', flagColor: '#ff3b30' };
   return { pinA, pinB, wm, lm, up, right,
     marks: [pinA, pinB, wm, lm],
-    // waypoint sequence: windward, leeward, windward, then finish at the line
+    // one quick lap: windward mark, leeward mark, finish at the line (2-3 minutes)
     seq: [ { x: wm.x, y: wm.y, label: 'Mark 1' }, { x: lm.x, y: lm.y, label: 'Mark 2' },
-           { x: wm.x, y: wm.y, label: 'Mark 1' }, { x: startX, y: startY, label: 'FINISH', finish: true } ],
+           { x: startX, y: startY, label: 'FINISH', finish: true } ],
   };
 }
+
+// selectable race difficulty — win a level to unlock the next
+const RACE_LEVELS = [
+  { name: 'Rookie Regatta', icon: '🐣', desc: 'Slow & friendly rivals', pace: 0.62, skill: 0.3, band: [0.45, 0.85], stars: [60, 40, 25, 15] },
+  { name: 'Club Race', icon: '⛵', desc: 'Rivals who know their stuff', pace: 0.78, skill: 0.5, band: [0.6, 0.95], stars: [100, 60, 35, 20] },
+  { name: 'Champion Cup', icon: '🏆', desc: 'The fastest fleet around!', pace: 0.92, skill: 0.75, band: [0.8, 1.0], stars: [160, 90, 50, 30] },
+];
 
 class BaseMode {
   constructor(game) { this.g = game; this.done = false; this.score = 0; }
@@ -155,7 +162,7 @@ class RingRun extends BaseMode {
 class TimeTrial extends BaseMode {
   constructor(g) {
     super(g);
-    this.course = buildCourse(g.wind, g.player.x, g.player.y - 0, 180);
+    this.course = buildCourse(g.wind, g.player.x, g.player.y - 0, 120);
     // put player just below the start line, on an easy close reach
     const up = this.course.up;
     g.player.x -= up.x * 30; g.player.y -= up.y * 30;
@@ -182,7 +189,7 @@ class TimeTrial extends BaseMode {
   finish() {
     this.done = true;
     Sound.fanfare();
-    const key = 'tt_' + this.g.player.typeId;
+    const key = 'tt2_' + this.g.player.typeId; // v2: shorter course, old bests don't apply
     const isBest = Progress.setBestTime(key, this.time);
     Progress.checkMission('ttfinish');
     if (this.g.player.typeId === 'opti') Progress.checkMission('ttfast', this.time < 180);
@@ -211,7 +218,9 @@ class TimeTrial extends BaseMode {
 class RaceMode extends BaseMode {
   constructor(g) {
     super(g);
-    this.course = buildCourse(g.wind, g.player.x, g.player.y, 190);
+    this.level = clamp(g.raceLevel || 0, 0, RACE_LEVELS.length - 1);
+    this.lv = RACE_LEVELS[this.level];
+    this.course = buildCourse(g.wind, g.player.x, g.player.y, 120);
     const up = this.course.up, right = this.course.right;
     g.player.x -= up.x * 30 + right.x * 10; g.player.y -= up.y * 30 + right.y * 10;
     g.player.heading = angNorm(g.wind.from + (g.player.p.noGo + 25) * RAD);
@@ -221,8 +230,8 @@ class RaceMode extends BaseMode {
       const off = (i + 1) * 14;
       const r = makeAIBoat(typeId,
         g.player.x + right.x * off, g.player.y + right.y * off,
-        g.player.heading, AI_NAMES[i].name, AI_NAMES[i].cos, 0.35 + i * 0.1);
-      r.boat.paceMul = 0.8;
+        g.player.heading, AI_NAMES[i].name, AI_NAMES[i].cos, this.lv.skill + i * 0.06);
+      r.boat.paceMul = this.lv.pace;
       r.wpIndex = 0;
       r.boat.frozen = true;
       r.finished = null;
@@ -274,7 +283,7 @@ class RaceMode extends BaseMode {
       r.ai.target = rw;
       r.ai.update(dt, this.g.wind);
       const gap = this.progressOf(r.wpIndex, r.boat.x, r.boat.y) - myProg;
-      const targetPace = gap > 50 ? 0.6 : gap < -70 ? 0.95 : 0.8;
+      const targetPace = gap > 50 ? this.lv.band[0] : gap < -70 ? this.lv.band[1] : this.lv.pace;
       r.boat.paceMul += (targetPace - r.boat.paceMul) * clamp(dt * 0.5, 0, 1);
       r.boat.update(dt, this.g.wind);
       if (r.finished === null && dist(r.boat.x, r.boat.y, rw.x, rw.y) < 16) {
@@ -289,13 +298,25 @@ class RaceMode extends BaseMode {
     const place = this.place();
     const medals = ['🥇', '🥈', '🥉', '4th'];
     Sound.fanfare();
-    if (place === 1) Progress.checkMission('racewin');
-    const stars = [100, 60, 35, 20][place - 1];
-    Progress.addStars(stars, 'Race');
-    this.g.showResults('🏁 Race Finished!', `
+    let unlockMsg = '';
+    if (place === 1) {
+      Progress.checkMission('racewin');
+      const rw = Progress.data.raceWins;
+      rw[this.level]++;
+      if (this.level < RACE_LEVELS.length - 1 && rw[this.level] === 1) {
+        const next = RACE_LEVELS[this.level + 1];
+        unlockMsg = `<div>🔓 Unlocked: <b>${next.icon} ${next.name}</b>!</div>`;
+        UI.toast(`🔓 New race level: ${next.name}!`, 'gold');
+      }
+      Progress.save();
+    }
+    const stars = this.lv.stars[place - 1];
+    Progress.addStars(stars, this.lv.name);
+    this.g.showResults(`🏁 ${this.lv.icon} ${this.lv.name}`, `
       <div style="font-size:52px">${medals[place - 1]}</div>
       <div>You finished <b>${place === 1 ? 'FIRST' : place === 2 ? 'second' : place === 3 ? 'third' : 'fourth'}</b>!</div>
       <div>Time: <b>${fmtTime(this.time)}</b></div>
+      ${unlockMsg}
       <div class="bigStars">+${stars} ⭐</div>`);
   }
   draw() {

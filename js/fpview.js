@@ -577,8 +577,9 @@ const FP = {
     if (p.p.hull === 'ship') this.ownSquareRig(p, sail, yAt, wAt, cx);
     else this.ownForeAft(p, wind, sail, yAt, wAt, cx);
 
-    // little sailor, hiking out to windward (dinghies only)
+    // your sailor, hiking out to windward (dinghies only)
     if (p.p.hull === 'pram' || p.p.hull === 'board' || p.p.hull === 'skiff') {
+      const ch = CHARACTERS.find(c => c.id === p.cosmetics.sailor) || CHARACTERS[0];
       const lean = Math.sin(p.heel) * 60; // heel>0 = leans left, sailor sits right
       const sx = cx + lean;
       const sy = Math.min(sternY, H) - 68;
@@ -594,12 +595,36 @@ const FP = {
       ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 2; ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(0, 26); ctx.stroke();
-      // head + cap
-      ctx.fillStyle = '#ffd9a8';
+      // neck
+      ctx.fillStyle = ch.skin;
+      ctx.fillRect(-4, -8, 8, 6);
+      // head from behind = hair
+      ctx.fillStyle = ch.hair;
       ctx.beginPath(); ctx.arc(0, -16, 13, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#e04b3a';
-      ctx.beginPath(); ctx.arc(0, -20, 13, Math.PI, 0); ctx.fill();
-      ctx.fillRect(-13, -21, 26, 4);
+      // hairstyle
+      const sway = Math.sin(this.t * 2.5) * 2 - Math.sin(p.heel) * 6; // hair swings with the boat
+      if (ch.style === 'ponytail') {
+        ctx.beginPath(); ctx.ellipse(sway * 0.6, -1, 4.5, 9, sway * 0.03, 0, TAU); ctx.fill();
+        ctx.fillStyle = ch.cap;
+        ctx.beginPath(); ctx.arc(sway * 0.4, -7, 2.8, 0, TAU); ctx.fill();
+        ctx.fillStyle = ch.hair;
+      } else if (ch.style === 'braids') {
+        ctx.beginPath(); ctx.ellipse(-10 + sway * 0.3, -4, 3.2, 8, 0.25, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(10 + sway * 0.3, -4, 3.2, 8, -0.25, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ffe14d';
+        ctx.beginPath(); ctx.arc(-10 + sway * 0.3, 3, 1.8, 0, TAU); ctx.arc(10 + sway * 0.3, 3, 1.8, 0, TAU); ctx.fill();
+      } else if (ch.style === 'curls') {
+        for (let k = 0; k < 5; k++) {
+          const a = Math.PI * (0.1 + k * 0.2);
+          ctx.beginPath(); ctx.arc(Math.cos(a) * 12, -14 - Math.sin(a) * 8 + 4, 4.5, 0, TAU); ctx.fill();
+        }
+      }
+      // cap
+      ctx.fillStyle = ch.cap;
+      ctx.beginPath(); ctx.arc(0, -19, 13, Math.PI, 0); ctx.fill();
+      ctx.fillRect(-13, -20, 26, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.arc(0, -28, 2, 0, TAU); ctx.fill();
       ctx.restore();
     }
 

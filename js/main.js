@@ -64,6 +64,7 @@ const Game = {
   init() {
     Progress.load();
     this.view = Progress.data.view || 'fp';
+    this.raceLevel = 0;
     Render.init();
     this.mmCtx = $('minimap').getContext('2d');
     this.bindInput();
@@ -103,7 +104,10 @@ const Game = {
   },
 
   buildMenus() {
-    document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => this.start(b.dataset.mode));
+    document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+      if (b.dataset.mode === 'race') { this.renderLevels(); UI.show('screenLevels'); }
+      else this.start(b.dataset.mode);
+    });
     $('btnBoats').onclick = () => { this.renderBoatGrid(); UI.show('screenBoats'); };
     $('btnBoathouse').onclick = () => { this.renderBoathouse(); UI.show('screenBoathouse'); };
     $('btnMissions').onclick = () => { this.renderMissions(); UI.show('screenMissions'); };
@@ -144,7 +148,84 @@ const Game = {
     }
   },
 
+  renderLevels() {
+    const grid = $('levelGrid');
+    grid.innerHTML = '';
+    const rw = Progress.data.raceWins;
+    RACE_LEVELS.forEach((lv, i) => {
+      const unlocked = i === 0 || rw[i - 1] >= 1;
+      const card = document.createElement('div');
+      card.className = 'boatCard' + (unlocked ? '' : ' locked');
+      card.innerHTML = `<div class="icon">${lv.icon}</div><div class="bname">${lv.name}</div>
+        <div class="bdesc">${lv.desc}</div>
+        ${unlocked ? `<div class="bdesc">🥇 Wins: ${rw[i]} · up to +${lv.stars[0]}⭐</div>` : `<div class="lockTag">🔒 Win ${RACE_LEVELS[i - 1].name}</div>`}`;
+      card.onclick = () => {
+        if (!unlocked) { UI.toast(`Win the ${RACE_LEVELS[i - 1].name} first!`, 'bad'); Sound.buzz(); return; }
+        this.raceLevel = i;
+        this.start('race');
+      };
+      grid.appendChild(card);
+    });
+  },
+
+  drawPortrait(canvas, ch) {
+    const c = canvas.getContext('2d');
+    const s = canvas.width;
+    c.clearRect(0, 0, s, s);
+    // life jacket shoulders
+    c.fillStyle = '#ff8c1a';
+    c.beginPath(); c.ellipse(s / 2, s * 0.95, s * 0.38, s * 0.3, 0, Math.PI, 0); c.fill();
+    // head (back view = hair)
+    c.fillStyle = ch.hair;
+    c.beginPath(); c.arc(s / 2, s * 0.48, s * 0.28, 0, TAU); c.fill();
+    if (ch.style === 'ponytail') {
+      c.beginPath(); c.ellipse(s / 2, s * 0.78, s * 0.09, s * 0.17, 0, 0, TAU); c.fill();
+      c.fillStyle = ch.cap;
+      c.beginPath(); c.arc(s / 2, s * 0.62, s * 0.055, 0, TAU); c.fill();
+    } else if (ch.style === 'braids') {
+      c.beginPath(); c.ellipse(s * 0.28, s * 0.68, s * 0.06, s * 0.15, 0.3, 0, TAU); c.fill();
+      c.beginPath(); c.ellipse(s * 0.72, s * 0.68, s * 0.06, s * 0.15, -0.3, 0, TAU); c.fill();
+    } else if (ch.style === 'curls') {
+      for (let k = 0; k < 5; k++) {
+        const a = Math.PI * (0.15 + k * 0.175);
+        c.beginPath(); c.arc(s / 2 + Math.cos(a) * s * 0.27, s * 0.5 - Math.sin(a) * s * 0.22 + s * 0.08, s * 0.09, 0, TAU); c.fill();
+      }
+    }
+    // cap
+    c.fillStyle = ch.cap;
+    c.beginPath(); c.arc(s / 2, s * 0.42, s * 0.285, Math.PI, 0); c.fill();
+    c.fillRect(s * 0.215, s * 0.40, s * 0.57, s * 0.05);
+    // cap button
+    c.fillStyle = 'rgba(255,255,255,0.5)';
+    c.beginPath(); c.arc(s / 2, s * 0.22, s * 0.04, 0, TAU); c.fill();
+    // neck sliver
+    c.fillStyle = ch.skin;
+    c.fillRect(s * 0.42, s * 0.72, s * 0.16, s * 0.08);
+  },
+
   renderBoathouse() {
+    // sailors
+    const sg = $('sailorGrid');
+    sg.innerHTML = '';
+    for (const ch of CHARACTERS) {
+      const el = document.createElement('div');
+      el.className = 'cosItem' + (Progress.data.equipped.sailor === ch.id ? ' selected' : '');
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 44;
+      cv.style.display = 'block';
+      cv.style.margin = '0 auto 4px';
+      this.drawPortrait(cv, ch);
+      el.appendChild(cv);
+      el.appendChild(document.createTextNode(ch.name));
+      el.onclick = () => {
+        Progress.data.equipped.sailor = ch.id;
+        Progress.save();
+        if (this.player) this.player.cosmetics.sailor = ch.id;
+        this.renderBoathouse();
+        Sound.ding();
+      };
+      sg.appendChild(el);
+    }
     const build = (gridId, list, kind, key) => {
       const grid = $(gridId);
       grid.innerHTML = '';
@@ -192,7 +273,7 @@ const Game = {
     $('freeWindKn').textContent = Math.round(this.wind.baseKn);
     const boatId = Progress.data.equipped.boat;
     this.player = new Boat(boatId, 0, 0, angNorm(this.wind.from + Math.PI / 2));
-    this.player.cosmetics = { sail: Progress.data.equipped.sail, hull: Progress.data.equipped.hull, flag: Progress.data.equipped.flag };
+    this.player.cosmetics = { sail: Progress.data.equipped.sail, hull: Progress.data.equipped.hull, flag: Progress.data.equipped.flag, sailor: Progress.data.equipped.sailor };
     this.player.onEvent = (n, d) => this.onBoatEvent(n, d);
     Render.cam.x = this.player.x; Render.cam.y = this.player.y; Render.cam.zoom = this.player.p.zoom;
     this.cleanTackStreak = 0;

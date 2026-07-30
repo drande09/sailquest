@@ -68,6 +68,7 @@ h3 { color:#9fdcff; margin:10px 0 6px; }
 
 /* boat grid */
 #boatGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+#levelGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
 .boatCard { background:rgba(255,255,255,.09); border:2px solid rgba(255,255,255,.3); border-radius:16px; padding:12px; cursor:pointer; transition:transform .1s; position:relative; }
 .boatCard:hover { transform:scale(1.04); background:rgba(255,255,255,.16); }
 .boatCard.selected { border-color:#ffe14d; box-shadow:0 0 16px rgba(255,225,77,.5); }

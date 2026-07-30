@@ -1,5 +1,9 @@
 // ---- boat definitions & sailing physics ----
 
+// global fun-factor speed boost: keeps the polar shape (realistic angles) but
+// everything moves ~30% faster so races finish in 2-3 minutes
+const FUN_SPEED = 1.3;
+
 // polar: [angle-off-wind deg, fraction of wind speed] - realistic dinghy/keelboat shapes
 const BOAT_TYPES = {
   opti: {
@@ -160,7 +164,7 @@ class Boat {
 
     // ----- speed -----
     let target = polarLookup(p.polar, aDeg) * wind.kn * eff * KN2MS * p.sailArea * this.paceMul;
-    target = Math.min(target, p.maxKn * KN2MS);
+    target = Math.min(target, p.maxKn * KN2MS) * FUN_SPEED;
     if (this.inIrons && this.ironsTime > 1) target = -0.45; // drift backwards
     if (this.knockedOut > 0) target = 0;
     const tau = target > this.spd ? p.tau : (eff < 0.15 ? p.tau * 3.2 : p.tau * 1.8); // coast through tacks

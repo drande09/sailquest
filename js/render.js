@@ -251,9 +251,10 @@ const Render = {
     // sailor (little kid with orange life jacket, sits to windward)
     if (boat.p.hull === 'pram' || boat.p.hull === 'board' || boat.p.hull === 'skiff') {
       const side = boat.boomAng > 0 ? 1 : -1; // sit to windward, opposite the boom
+      const ch = (typeof CHARACTERS !== 'undefined' && CHARACTERS.find(c => c.id === boat.cosmetics.sailor)) || { cap: '#e04b3a' };
       ctx.fillStyle = '#ff8c1a';
       ctx.beginPath(); ctx.arc(side * B * 0.22, L * 0.12, Math.max(2, B * 0.16), 0, TAU); ctx.fill();
-      ctx.fillStyle = '#ffd9a8';
+      ctx.fillStyle = ch.cap; // seen from above you see the cap
       ctx.beginPath(); ctx.arc(side * B * 0.22, L * 0.12 - B * 0.1, Math.max(1.2, B * 0.09), 0, TAU); ctx.fill();
     }
 

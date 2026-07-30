@@ -27,6 +27,16 @@ const FLAGS = [
   { id: 'party',   name: 'Party',    emoji: '🎉', locked: true },
 ];
 
+// sailor characters — everyone is unlocked from the start so siblings can each pick their own
+const CHARACTERS = [
+  { id: 'alex', name: 'Alex', skin: '#ffd9a8', cap: '#e04b3a', hair: '#7a4a1e', style: 'cap' },
+  { id: 'mia',  name: 'Mia',  skin: '#ffd9a8', cap: '#f06bb2', hair: '#f2c94c', style: 'ponytail' },
+  { id: 'zoe',  name: 'Zoe',  skin: '#a86a3c', cap: '#9b6bff', hair: '#2b1c10', style: 'braids' },
+  { id: 'kai',  name: 'Kai',  skin: '#a86a3c', cap: '#3db5ff', hair: '#171717', style: 'cap' },
+  { id: 'lily', name: 'Lily', skin: '#ffe0c4', cap: '#4dd463', hair: '#c0392b', style: 'ponytail' },
+  { id: 'sam',  name: 'Sam',  skin: '#8a5a2b', cap: '#ffe14d', hair: '#222222', style: 'curls' },
+];
+
 const MISSIONS = [
   { id: 'sail200',   icon: '🌊', name: 'Set Sail',        desc: 'Sail 200 meters',                      stars: 10 },
   { id: 'tack1',     icon: '🔁', name: 'First Tack',      desc: 'Turn your bow through the wind',       stars: 20 },
@@ -59,6 +69,9 @@ const Progress = {
       bestTimes: {},
       counters: { dist: 0, tacks: 0, gybes: 0, cleanGybes: 0, ducks: 0 },
     };
+    // migrations for saves from earlier versions
+    if (!this.data.equipped.sailor) this.data.equipped.sailor = 'alex';
+    if (!this.data.raceWins) this.data.raceWins = [0, 0, 0];
   },
   save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); } catch (e) {} },
 
