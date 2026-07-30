@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SailQuest ⛵ — Learn to Sail!</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="sea"></canvas>
+<canvas id="minimap" width="170" height="170"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="windWidget">
+    <div class="label">WIND</div>
+    <div id="windRose"><div id="windArrow">➤</div></div>
+    <div id="windKn">8 kn</div>
+  </div>
+  <div id="starBox">⭐ <span id="starTotal">0</span></div>
+  <div id="modeInfo"></div>
+  <div id="speedBox">
+    <div id="speedNum">0.0</div>
+    <div class="label">knots</div>
+    <div id="speedBar"><div id="speedFill"></div></div>
+  </div>
+  <div id="controlsBox">
+    <div class="ctlRow"><span class="key">◀ A</span><div id="rudderBar"><div id="rudderTick"></div></div><span class="key">D ▶</span></div>
+    <div class="ctlRow"><span class="key">S out</span><div id="sheetBar"><div id="sheetFill"></div></div><span class="key">W in</span></div>
+    <div class="ctlRow" id="jibRow"><span class="key">Q out</span><div id="jibBar"><div id="jibFill"></div></div><span class="key">E in</span> <span id="jibAuto" class="key auto">AUTO</span></div>
+  </div>
+  <div id="coach" class="hidden"><span id="coachFace">🐦</span><div id="coachText"></div></div>
+  <div id="soakBox" class="hidden"><div class="label">💦 SOAKED</div><div id="soakBar"><div id="soakFill"></div></div></div>
+  <button id="pauseBtn">☰</button>
+  <button id="viewBtn" title="Switch view (V)">👁️</button>
+  <div id="freeWind" class="hidden">Wind: <button id="windDown">–</button><span id="freeWindKn">8</span><button id="windUp">+</button></div>
+</div>
+
+<!-- Menus -->
+<div id="overlay">
+  <div id="screenMain" class="screen">
+    <h1 class="title">⛵ SailQuest</h1>
+    <div class="subtitle">Learn to sail like a champion!</div>
+    <div id="menuBoat"></div>
+    <div class="btnCol">
+      <button class="big" data-mode="free">🌊 Free Sail</button>
+      <button class="big" data-mode="rings">💍 Ring Run</button>
+      <button class="big" data-mode="trial">⏱️ Time Trial</button>
+      <button class="big" data-mode="race">🏁 Race!</button>
+      <button class="big" data-mode="battle">💦 Water Battle</button>
+    </div>
+    <div class="btnRow">
+      <button id="btnBoats">⛵ Boats</button>
+      <button id="btnBoathouse">🎨 Boathouse</button>
+      <button id="btnMissions">🏅 Missions</button>
+      <button id="btnHelp">❓ How to Sail</button>
+    </div>
+    <div class="menuStars">⭐ <span id="menuStarTotal">0</span> Sea Stars</div>
+  </div>
+
+  <div id="screenBoats" class="screen hidden">
+    <h2>Choose Your Boat</h2>
+    <div id="boatGrid"></div>
+    <button class="backBtn">⬅ Back</button>
+  </div>
+
+  <div id="screenBoathouse" class="screen hidden">
+    <h2>🎨 The Boathouse</h2>
+    <div class="bhSection"><h3>Sails</h3><div id="sailGrid" class="cosGrid"></div></div>
+    <div class="bhSection"><h3>Hull Paint</h3><div id="hullGrid" class="cosGrid"></div></div>
+    <div class="bhSection"><h3>Flags</h3><div id="flagGrid" class="cosGrid"></div></div>
+    <button class="backBtn">⬅ Back</button>
+  </div>
+
+  <div id="screenMissions" class="screen hidden">
+    <h2>🏅 Missions</h2>
+    <div id="missionList"></div>
+    <button class="backBtn">⬅ Back</button>
+  </div>
+
+  <div id="screenHelp" class="screen hidden">
+    <h2>❓ How to Sail</h2>
+    <div id="helpBody">
+      <p><b>🌬️ The wind arrow shows where the wind is blowing.</b> Sails catch the wind and push you along!</p>
+      <p><b>🚫 The No-Go Zone:</b> You can NEVER sail straight into the wind — your sail just flaps and you stop! The red cone shows the no-go zone. To go upwind, <b>zigzag</b>: sail at an angle, then <b>TACK</b> (turn your bow through the wind) and sail at an angle the other way.</p>
+      <p><b>⛵ Trim your sail:</b> Pull it <b>in (W)</b> when sailing toward the wind, let it <b>out (S)</b> when sailing away from the wind. If the sail flaps — pull in! If you feel slow and tipped over — let out!</p>
+      <p><b>🔁 Tacking:</b> turning your <i>front</i> through the wind. Do it with speed so you don't get stuck "in irons"!</p>
+      <p><b>🔄 Gybing:</b> turning your <i>back</i> through the wind. Watch out — the boom swings across! Pull the sail in a bit first for a smooth gybe.</p>
+      <p><b>Controls:</b> <span class="key">A</span>/<span class="key">D</span> or <span class="key">◀</span>/<span class="key">▶</span> steer · <span class="key">W</span>/<span class="key">▲</span> sail in · <span class="key">S</span>/<span class="key">▼</span> sail out · <span class="key">Q</span>/<span class="key">E</span> jib (big boats) · <span class="key">SPACE</span> water gun · <span class="key">V</span> switch boat-view / bird-view · <span class="key">N</span> no-go cone on/off · <span class="key">M</span> sound</p>
+    </div>
+    <button class="backBtn">⬅ Back</button>
+  </div>
+
+  <div id="screenResults" class="screen hidden">
+    <h2 id="resultTitle">Results</h2>
+    <div id="resultBody"></div>
+    <div class="btnRow">
+      <button id="btnAgain">🔁 Play Again</button>
+      <button id="btnMenu2">🏠 Menu</button>
+    </div>
+  </div>
+
+  <div id="screenPause" class="screen hidden">
+    <h2>Paused</h2>
+    <div class="btnCol">
+      <button id="btnResume" class="big">▶ Keep Sailing</button>
+      <button id="btnRestart" class="big">🔁 Restart</button>
+      <button id="btnQuit" class="big">🏠 Menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastLayer"></div>
+<div id="countdown" class="hidden"></div>
+
+<script src="js/util.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/boats.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/render.js"></script>
+<script src="js/fpview.js"></script>
+<script src="js/modes.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
