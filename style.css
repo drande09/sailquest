@@ -115,3 +115,140 @@ h3 { color:#9fdcff; margin:10px 0 6px; }
   #controlsBox { transform:translateX(-50%) scale(.85); }
   #minimap { width:120px; height:120px; }
 }
+
+/* Coastal sailing club: warm canvas, dark teal instruments and amber guides. */
+:root{--ink:#183e4b;--cream:#f5f0e3;--muted:#a8c5c7;--gold:#f1c578;--orange:#df815b;--glass:rgba(16,47,59,.87)}
+html,body{font-family:'Segoe UI',system-ui,sans-serif;background:#2d747e;color:var(--cream)}
+#ocean{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#ocean:active{cursor:grabbing}
+#ocean[hidden]{display:none}
+#sea{pointer-events:none;z-index:1}
+button{touch-action:manipulation;transition:background .15s,transform .15s}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
+#overlay{padding:24px;align-items:center;justify-content:flex-start;background:linear-gradient(90deg,rgba(10,40,48,.2),transparent 80%)}
+.screen{color:var(--ink);background:var(--cream);border:1px solid rgba(255,255,255,.7);box-shadow:0 24px 90px #062e4130;border-radius:20px;max-width:640px;padding:30px;max-height:calc(100dvh - 48px);width:min(100%,640px)}
+.screen:not(#screenMain){margin:auto}
+#screenMain{margin-left:clamp(0px,3vw,45px);max-width:448px;text-align:left;padding:30px 32px}
+.eyebrow{font-size:10px;letter-spacing:2.2px;font-weight:800;color:#4c777b;margin-bottom:13px}
+.title{font-size:60px;line-height:1.05;letter-spacing:-3px;color:var(--ink);text-shadow:none;font-weight:800;margin-bottom:15px}
+.titleDot{color:var(--orange)}
+.subtitle{font-size:21px;letter-spacing:-.5px;color:var(--ink);font-weight:600;margin:0 0 8px}
+.menuIntro{font-size:14px;line-height:1.6;color:#597278;max-width:280px;margin-bottom:25px}
+.screen button{background:#e8e5d9;color:var(--ink);border:1px solid #d6dcd2;border-radius:9px;box-shadow:none;padding:10px 12px;font-size:13px;font-weight:650}
+.screen button:hover{transform:translateY(-1px);background:#e2e5d9}
+.screen .learnButton{display:flex;justify-content:space-between;align-items:center;background:var(--ink);border-color:var(--ink);color:var(--cream);width:100%;padding:17px 19px;font-size:17px;text-align:left;border-radius:10px}
+.screen .learnButton:hover{background:#265665}
+.learnButton small{display:block;font-size:11px;font-weight:400;color:#b8d3cc;margin-top:5px;letter-spacing:.35px}
+.learnButton>span:last-child{color:var(--gold);font-size:28px}
+.menuDivider{font-size:9px;font-weight:800;color:#698081;letter-spacing:1.7px;margin:23px 0 11px;display:flex;align-items:center;gap:12px}
+.menuDivider:after{content:'';height:1px;flex:1;background:#d8dcd2}
+.modeGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0}
+.screen .modeGrid button.big{display:flex;align-items:center;justify-content:space-between;font-size:13px;background:transparent;color:var(--ink);width:100%;padding:12px}
+.modeGrid button:last-child{grid-column:1/-1}
+.modeGrid button span{color:#709491;font-size:18px;line-height:1}
+#screenMain .btnRow{gap:6px;justify-content:space-between;margin-top:20px;flex-wrap:nowrap}
+#screenMain .btnRow button{font-size:11px;background:transparent;border:0;padding:3px 0}
+.menuFooter{border-top:1px solid #d8dcd2;margin-top:22px;padding-top:13px;display:flex;justify-content:space-between;align-items:center;font-size:8px;letter-spacing:.8px;color:#7d8f89}
+.menuStars{font-size:11px;letter-spacing:0;color:#956b35;margin:0;font-weight:700}
+h2{color:var(--ink);font-size:28px;font-weight:700;letter-spacing:-.8px;text-shadow:none}h3{color:#578080}
+.screen button.big{font-size:17px;background:var(--ink);color:var(--cream);width:280px}
+.boatCard,.cosItem{border:1px solid #c7d4cf;background:#e8eee4;color:var(--ink)}
+.boatCard.selected,.cosItem.selected{border-color:#ae783c;box-shadow:0 0 0 1px #ae783c}
+.boatCard .bdesc,.mission .mDesc{color:#5a787a}
+.boatCard:hover{background:#dfe8dd}.boatCard .lockTag{color:#96753e}
+.mission,.mission.done{background:#e1e8dd}.mission .mStars{color:#997839}
+#helpBody{font-size:14px;line-height:1.65}.helpNote{font-size:12px;color:#627a7b;border-top:1px solid #d5ded4;padding-top:12px}
+#resultBody .bigStars{color:#a77633}
+.lessonIntro{font-size:14px;color:#65817e;margin-bottom:20px}
+#lessonGrid{display:grid;gap:10px;text-align:left}
+.screen .lessonCard{display:flex;gap:16px;align-items:center;text-align:left;width:100%;background:#e5ebe1;padding:17px}
+.lessonCard .lessonNumber{font-size:24px;font-weight:300;color:#688e87}
+.lessonCard strong{display:block;font-size:17px}.lessonCard small{display:block;color:#65817e;margin-top:4px}
+.lessonCard .lessonComplete{margin-left:auto;color:#537962}
+.settings{display:grid;gap:14px;text-align:left;margin:20px auto 25px;max-width:300px;font-size:14px}
+.settings input{accent-color:var(--ink);margin-right:8px}.settings select{float:right;font:inherit;padding:3px;border-radius:4px}
+#graphicsNotice{margin-top:12px;font-size:12px;color:#875b3a}
+.gameBrand{position:absolute;left:25px;top:21px;font-size:16px;letter-spacing:2px;font-weight:800;color:#f6f1e2;text-shadow:0 1px 10px #20465560}
+.brandIcon{color:var(--gold);font-size:21px;vertical-align:middle;margin-right:5px}
+.gameBrand>span:last-child{display:block;margin:3px 0 0 29px;font-size:8px;letter-spacing:2.6px;color:#c8e0d9;font-weight:500}
+#modeInfo{top:24px;background:none;border:0;box-shadow:none;font-size:12px;font-weight:600;text-shadow:0 1px 4px #2b555580;letter-spacing:.5px;padding:0}
+#starBox{top:auto;bottom:28px;left:25px;right:auto;font-size:13px;background:none;border:0;box-shadow:none;padding:0;font-weight:600;text-shadow:none;color:var(--gold)}
+#windWidget{left:auto;right:28px;top:145px;width:120px;display:none}
+#sailingPanel{position:absolute;left:24px;top:96px;width:218px;padding:15px 14px 14px;border-radius:13px;background:var(--glass);border:1px solid #e5f3e324;box-shadow:0 12px 38px #10364525;text-align:center}
+.instrumentLabel{font-size:9px;font-weight:700;letter-spacing:1.55px;color:#afc9c4}
+#windDial{display:block;width:190px;height:190px;margin:3px auto -2px}
+#pointOfSail{font-size:20px;font-weight:650;letter-spacing:-.5px;color:#f8efdb}
+#windAngle{font-size:12px;color:#c5d9d2;margin:5px 0}
+#tackSide{font-size:10px;color:#8cb2b2}
+#trimFeedback{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid #ffffff18;color:#aaddba;font-size:11px;font-weight:650}
+.statusDot{width:5px;height:5px;border-radius:50%;background:currentColor}
+#trimFeedback[data-state=warn]{color:#f1c578}
+#trimHint{font-size:10px;color:#afc8c3;line-height:1.5;margin-top:5px}
+#viewControls{position:absolute;top:22px;right:77px;display:flex;padding:4px;background:var(--glass);border:1px solid #ecf5e633;border-radius:8px;pointer-events:auto}
+#viewControls button,#lookControls button{border:0;background:transparent;color:#b8d1cd;border-radius:5px;padding:8px 12px;font-size:11px;font-weight:600;cursor:pointer}
+#viewControls button[aria-pressed=true]{background:#f0ebda;color:var(--ink)}
+#viewControls button:disabled{opacity:.35;cursor:not-allowed}
+#pauseBtn{top:22px;right:24px;width:40px;height:40px;background:var(--glass);border:1px solid #ecf5e633;border-radius:8px;font-size:17px}
+#lookControls{position:absolute;bottom:158px;left:50%;transform:translateX(-50%);display:flex;pointer-events:auto;gap:4px}
+#lookControls button{background:#173f4e6b;color:#dceadd;border:1px solid #ffffff20;font-size:10px;padding:7px 10px}
+#viewHint{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:.4px;color:#c1d9d5;white-space:nowrap;text-shadow:0 1px 3px #103948}
+#destination{position:absolute;top:87px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:var(--glass);border:1px solid #ffffff20;border-radius:9px;padding:9px 13px;color:var(--gold);font-size:11px;max-width:250px}
+#destinationArrow{display:inline-block;font-size:22px;line-height:1}#destinationText{line-height:1.5}
+#speedBox{left:calc(50% - 255px);bottom:26px;width:98px;padding:14px 8px;border-radius:11px;background:var(--glass);border:1px solid #e5f3e324}
+#speedNum{font-size:34px;color:var(--cream);text-shadow:none;font-weight:450;letter-spacing:-1px}
+#hud .label{font-size:9px;letter-spacing:1px;font-weight:500;color:#b4d1ce}
+#speedBar{height:3px;background:#e5f3e319;margin:8px 8px 0}#speedFill{background:var(--gold)}
+#controlsBox{bottom:26px;left:calc(50% + 18px);min-width:280px;border-radius:11px;padding:13px 16px;background:var(--glass);border:1px solid #e5f3e324;gap:10px}
+.key{font-size:10px;padding:3px 5px;border-radius:4px;background:#ffffff10;color:#dbe9dd;box-shadow:none;white-space:nowrap;font-weight:500}
+#helpBody .key{background:#d5dfd4;color:var(--ink)}
+#sheetBar,#rudderBar,#jibBar{width:160px;height:7px;background:#dceee422;overflow:visible}
+#sheetFill,#jibFill{background:#e0a568;border-radius:8px}#rudderTick{background:#c3ddd0;width:6px;margin-left:-3px}
+#idealTrim{position:absolute;height:15px;width:2px;top:-4px;left:50%;background:#f6d995;box-shadow:0 0 6px #f6d97655}
+.trimLegend{font-size:8px;letter-spacing:1px;color:#90b4b4;display:flex;gap:7px;justify-content:space-between}
+#sheetPercent{color:#dfdac3;letter-spacing:0}#trimLegendGuide{color:#d3b882;letter-spacing:0}
+#freeWind{top:auto;left:auto;right:24px;bottom:28px;transform:none;border:1px solid #e5f3e324;background:var(--glass);border-radius:8px;font-size:11px;font-weight:500;padding:5px 7px}
+#freeWind button{background:transparent;color:var(--gold);width:22px;height:22px}
+#minimap{z-index:3;right:24px;top:84px;border:1px solid #d8edde44;border-radius:12px;background:#123b4aba;box-shadow:none;width:140px;height:140px}
+#lessonPanel{position:absolute;right:24px;top:242px;width:294px;background:var(--cream);border:1px solid #fff8;border-radius:12px;padding:19px 20px;color:var(--ink);pointer-events:auto;box-shadow:0 12px 38px #10364520}
+#lessonPanel .instrumentLabel{font-size:8px;color:#658781;line-height:1.7;letter-spacing:1.1px}
+#lessonTitle{font-size:21px;letter-spacing:-.6px;line-height:1.2;margin:9px 0 11px}
+#lessonText{font-size:12px;line-height:1.65;color:#4c6c70}
+#lessonProgress{appearance:none;width:100%;height:4px;margin:18px 0 10px;border:0;border-radius:8px;background:#d6dfd4;color:#568d7e}
+#lessonProgress::-webkit-progress-bar{background:#d6dfd4;border-radius:8px}#lessonProgress::-webkit-progress-value{background:#568d7e;border-radius:8px}
+#lessonFeedback{min-height:35px;font-size:11px;line-height:1.5;font-weight:600;color:#59756e}
+.lessonActions{display:flex;gap:10px;margin-top:11px}.lessonActions button{font-size:10px;cursor:pointer;color:#486d69;background:transparent;border:0;border-bottom:1px solid #aebfb5;padding:3px 0}
+#coach{right:24px;bottom:88px;max-width:245px}#coachFace{display:none}#coachText{font-size:11px;line-height:1.5;font-weight:500;color:var(--ink);background:var(--cream);padding:12px 15px;border-radius:10px;box-shadow:none}
+body.lesson-active #coach{display:none}
+#soakBox{left:auto;right:24px;bottom:26px;background:var(--glass);border:1px solid #ffffff24;border-radius:8px}
+.toast{font-size:16px;box-shadow:0 5px 20px #143b4825;text-shadow:none;background:var(--glass);border:1px solid #ffffff20;border-radius:9px;padding:10px 18px;font-weight:600}
+#countdown{font-size:100px;color:var(--cream);text-shadow:0 8px 30px #153b4870}
+#touchControls{display:none;position:fixed;bottom:16px;left:16px;right:16px;z-index:6;justify-content:space-between;pointer-events:none}
+#touchControls>div{display:flex;gap:8px}#touchControls button{background:#163d4ee8;color:var(--cream);border:1px solid #ffffff40;border-radius:10px;min-width:52px;height:48px;font-weight:650;pointer-events:auto;touch-action:none;padding:0 12px}
+#touchControls button.held{background:#d89957;color:#173f4d}
+@media (max-height:760px) and (min-width:901px){
+  #screenMain{padding:23px 28px;max-width:425px}.title{font-size:52px}.menuIntro{margin-bottom:17px}.menuDivider{margin-top:16px}.menuFooter{margin-top:15px}
+  #sailingPanel{top:84px;width:200px;padding:13px 12px}#windDial{width:165px;height:165px}#pointOfSail{font-size:18px}
+  #lessonPanel{top:230px;padding:15px 17px;width:272px}#lessonTitle{font-size:19px}#lessonText{font-size:11px}#lessonProgress{margin-top:12px}
+}
+@media (max-width:1100px){.gameBrand>span:last-child{display:none}#modeInfo{display:none}#coach{max-width:195px}#lessonPanel{width:250px}#sailingPanel{left:16px;width:190px}#windDial{width:160px;height:160px}.instrumentLabel{font-size:8px}#pointOfSail{font-size:18px}}
+@media (max-width:900px){
+  #sailingPanel{top:82px;width:160px;padding:12px 8px}#windDial{width:135px;height:135px}#pointOfSail{font-size:16px}#trimHint{display:none}
+  #lessonPanel{right:16px;top:190px;width:225px;padding:14px}#lessonText{font-size:11px}#lessonTitle{font-size:19px}
+  #minimap{width:95px;height:95px;right:16px;top:82px}#controlsBox{transform:translateX(-50%);bottom:18px}#speedBox{bottom:18px}
+  #coach{display:none}#viewControls{right:67px}.gameBrand{left:16px;font-size:13px}#pauseBtn{right:16px}
+}
+@media (pointer:coarse){#touchControls:not(.hidden){display:flex}#controlsBox,#speedBox{bottom:83px}#lookControls{bottom:204px}#viewHint{display:none}#starBox,#freeWind{bottom:150px}#coach{display:none}}
+@media (max-width:600px){
+  #destination{top:auto;bottom:230px;font-size:10px;max-width:210px}
+  #overlay{padding:12px}.screen{max-height:calc(100dvh - 24px);padding:24px 20px}#screenMain{margin:0 auto;max-width:380px;padding:24px}.title{font-size:50px}
+  .gameBrand{top:18px;font-size:12px}.brandIcon{font-size:16px}#viewControls{top:51px;left:12px;right:auto}#viewControls button{padding:7px 10px;font-size:10px}#pauseBtn{top:12px;right:12px;width:32px;height:32px}
+  #sailingPanel{left:12px;top:100px;width:132px;padding:10px 5px}#windDial{width:116px;height:116px}.instrumentLabel{font-size:6px;letter-spacing:1px}#pointOfSail{font-size:13px}#windAngle{font-size:10px}#tackSide{font-size:8px}#trimFeedback{margin-top:8px;padding-top:8px;font-size:9px}
+  #minimap{right:12px;top:53px;width:65px;height:65px}
+  #lessonPanel{right:12px;top:130px;width:calc(100% - 166px);max-width:245px;padding:12px}#lessonPanel .instrumentLabel{font-size:7px}#lessonTitle{font-size:16px}#lessonText{font-size:10px;line-height:1.6}#lessonFeedback{font-size:10px}#lessonProgress{margin:10px 0 6px}.lessonActions{margin-top:6px}
+  #controlsBox{left:calc(50% + 35px);min-width:0;padding:11px 10px;bottom:80px;gap:9px}#sheetBar,#rudderBar,#jibBar{width:110px}.trimLegend{font-size:7px}#trimLegendGuide{display:none}.key{font-size:9px}
+  #speedBox{left:12px;width:70px;bottom:80px;padding:12px 3px}#speedNum{font-size:28px}#lookControls{bottom:184px}#lookControls button{font-size:9px;padding:6px 8px}
+  #freeWind{bottom:190px;right:12px}#starBox{top:20px;right:57px;left:auto;bottom:auto;font-size:11px}
+  #viewHint{display:none}#touchControls:not(.hidden){display:flex}#touchControls{left:12px;right:12px;bottom:16px}#touchControls button{min-width:42px;padding:0 9px;font-size:11px;height:46px}
+}
+@media (max-height:550px) and (min-width:601px){#sailingPanel{top:76px}#windDial{width:110px;height:110px}#sailingPanel{width:160px}#lessonPanel{top:80px;width:240px}#minimap{display:none!important}#controlsBox,#speedBox{bottom:12px}#touchControls{bottom:10px}#lookControls{bottom:113px}#viewHint{display:none}#starBox{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}

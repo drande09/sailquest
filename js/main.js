@@ -60,12 +60,21 @@ const Game = {
   lastT: 0,
   cleanTackStreak: 0,
   mmCtx: null,
+  visualTime: 0,
 
   init() {
     Progress.load();
-    this.view = Progress.data.view || 'fp';
+    this.view = ['fp','top','chase'].includes(Progress.data.view) ? Progress.data.view : 'chase';
+    this.showGuides = Progress.data.guides !== false;
     this.raceLevel = 0;
     Render.init();
+    try { this.scene3d = new window.SailingScene($('ocean')); }
+    catch (err) { console.warn('3D unavailable; using overhead view.', err); this.disable3D(); }
+    addEventListener('sailquest-3d-lost', () => { this.disable3D(); UI.toast('3D paused on this device. Switched to overhead.'); });
+    if (this.scene3d) {
+      this.scene3d.quality=Progress.data.quality||'high';this.scene3d.resize();
+      this.scene3d.reducedMotion=Progress.data.gentleMotion??this.scene3d.reducedMotion;
+    }
     this.mmCtx = $('minimap').getContext('2d');
     this.bindInput();
     this.buildMenus();
@@ -74,36 +83,76 @@ const Game = {
     // idle menu backdrop
     this.wind = new Wind(8);
     this.player = new Boat('opti', 0, 0, this.wind.from + 2);
+    this.syncViewButtons();
     requestAnimationFrame(t => this.frame(t));
   },
 
   bindInput() {
     addEventListener('keydown', e => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+      if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+      if (this.running && !this.paused && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
       Sound.init();
       this.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = true;
+      if (e.repeat) return;
       if (e.key === 'Escape' && this.running) this.togglePause();
-      if ((e.key === 'n' || e.key === 'N')) Render.showCone = !Render.showCone;
+      if ((e.key === 'n' || e.key === 'N')) this.setGuides(!this.showGuides);
       if ((e.key === 'v' || e.key === 'V')) this.toggleView();
       if ((e.key === 'm' || e.key === 'M')) { Sound.muted = !Sound.muted; UI.toast(Sound.muted ? '🔇 Sound off' : '🔊 Sound on'); }
       if ((e.key === 'i' || e.key === 'I') && this.player) { this.player.autoJib = !this.player.autoJib; }
     });
     addEventListener('keyup', e => { this.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+    addEventListener('blur', () => { this.keys = {}; if(this.running&&!this.paused)this.togglePause(); });
+    document.addEventListener('visibilitychange', () => { if(document.hidden){this.keys={};if(this.running&&!this.paused)this.togglePause();} });
     $('pauseBtn').onclick = () => this.togglePause();
     $('windUp').onclick = () => { this.wind.baseKn = Math.min(25, this.wind.baseKn + 1); $('freeWindKn').textContent = this.wind.baseKn; };
     $('windDown').onclick = () => { this.wind.baseKn = Math.max(2, this.wind.baseKn - 1); $('freeWindKn').textContent = this.wind.baseKn; };
     $('jibAuto').onclick = () => { this.player.autoJib = !this.player.autoJib; };
     $('viewBtn').onclick = () => this.toggleView();
+    document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>this.setView(b.dataset.view));
+    $('lookLeft').onclick=()=>{if(this.scene3d)this.scene3d.yaw=-Math.PI/2;};
+    $('lookRight').onclick=()=>{if(this.scene3d)this.scene3d.yaw=Math.PI/2;};
+    $('lookAhead').onclick=()=>this.scene3d?.center();
+    $('guideToggle').checked=this.showGuides;
+    $('guideToggle').onchange=e=>this.setGuides(e.target.checked);
+    $('motionToggle').checked=this.scene3d?.reducedMotion||false;
+    $('motionToggle').onchange=e=>{if(this.scene3d)this.scene3d.reducedMotion=e.target.checked;Progress.data.gentleMotion=e.target.checked;Progress.save();};
+    $('qualitySelect').value=Progress.data.quality||'high';
+    $('qualitySelect').onchange=e=>{if(this.scene3d){this.scene3d.quality=e.target.value;this.scene3d.resize();}Progress.data.quality=e.target.value;Progress.save();};
+    document.querySelectorAll('[data-key]').forEach(b=>{
+      const release=e=>{e.preventDefault();this.keys[b.dataset.key]=false;b.classList.remove('held');};
+      b.addEventListener('pointerdown',e=>{e.preventDefault();Sound.init();b.setPointerCapture(e.pointerId);this.keys[b.dataset.key]=true;b.classList.add('held');});
+      b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('lostpointercapture',release);
+    });
+    $('lessonReset').onclick=()=>this.start('lesson');
+    $('lessonContinue').onclick=()=>{const i=LESSONS.findIndex(l=>l.id===this.lessonId);this.lessonId=LESSONS[(i+1)%LESSONS.length].id;this.start('lesson');};
+  },
+
+  disable3D() {
+    this.scene3d=null;this.view='top';$('ocean').hidden=true;
+    $('graphicsNotice').classList.remove('hidden');
+    this.syncViewButtons();
+  },
+  setGuides(on) {
+    this.showGuides=on;Render.showCone=on;Progress.data.guides=on;Progress.save();$('guideToggle').checked=on;
+  },
+  syncViewButtons() {
+    document.querySelectorAll('[data-view]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.view===this.view));b.disabled=!this.scene3d&&b.dataset.view!=='top';});
+    $('lookControls').classList.toggle('hidden',this.view==='top');
+    $('viewHint').classList.toggle('hidden',this.view==='top');
+  },
+  setView(view) {
+    if(!this.scene3d&&view!=='top')return;
+    this.view=view;Progress.data.view=view;Progress.save();this.syncViewButtons();
   },
 
   toggleView() {
-    this.view = this.view === 'fp' ? 'top' : 'fp';
-    Progress.data.view = this.view;
-    Progress.save();
-    UI.toast(this.view === 'fp' ? '⛵ Boat view' : '🦅 Bird view');
+    if(!this.scene3d)return;
+    const views=['chase','fp','top'];this.setView(views[(views.indexOf(this.view)+1)%3]);
+    UI.toast({chase:'3D chase view',fp:'First person · at the helm',top:'Overhead view'}[this.view]);
   },
 
   buildMenus() {
+    $('btnLearn').onclick=()=>{this.renderLessons();UI.show('screenLessons');};
     document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
       if (b.dataset.mode === 'race') { this.renderLevels(); UI.show('screenLevels'); }
       else this.start(b.dataset.mode);
@@ -119,6 +168,14 @@ const Game = {
     $('btnAgain').onclick = () => this.start(this.modeName);
     $('btnMenu2').onclick = () => this.quitToMenu();
     this.updateMenuBoat();
+  },
+  renderLessons() {
+    const grid=$('lessonGrid');grid.innerHTML='';
+    for(const lesson of LESSONS){
+      const b=document.createElement('button');b.className='lessonCard';
+      b.innerHTML=`<span class="lessonNumber">${lesson.icon}</span><span><strong>${lesson.title}</strong><small>${lesson.subtitle}</small></span><span class="lessonComplete">${Progress.data.lessons?.[lesson.id]?'✓':'↗'}</span>`;
+      b.onclick=()=>{this.lessonId=lesson.id;this.start('lesson');};grid.appendChild(b);
+    }
   },
   updateMenuBoat() {
     $('menuBoat').textContent = BOAT_TYPES[Progress.data.equipped.boat].icon;
@@ -268,6 +325,8 @@ const Game = {
   },
 
   start(modeName) {
+    this.session=(this.session||0)+1;this.countdownState=null;this.resultState=null;this.keys={};
+    $('countdown').classList.add('hidden');
     this.modeName = modeName;
     this.wind = new Wind(modeName === 'free' ? (this.wind ? this.wind.baseKn : 8) : rand(7, 11));
     $('freeWindKn').textContent = Math.round(this.wind.baseKn);
@@ -281,8 +340,11 @@ const Game = {
     this._lastPos = { x: 0, y: 0 };
     this.coach = new Coach();
 
-    const modes = { free: FreeSail, rings: RingRun, trial: TimeTrial, race: RaceMode, battle: BattleMode };
+    $('lessonPanel').classList.add('hidden');
+    document.body.classList.toggle('lesson-active',modeName==='lesson');
+    const modes = { free: FreeSail, rings: RingRun, trial: TimeTrial, race: RaceMode, battle: BattleMode, lesson: LessonMode };
     this.mode = new modes[modeName](this);
+    this._lastPos={x:this.player.x,y:this.player.y};
 
     $('hud').classList.remove('hidden');
     $('jibRow').style.display = this.player.p.hasJib ? '' : 'none';
@@ -292,35 +354,34 @@ const Game = {
     UI.show(null);
     this.running = true;
     this.paused = false;
+    $('touchControls').classList.remove('hidden');$('touchFire').classList.toggle('hidden',modeName!=='battle');
+    Render.showCone=this.showGuides;this.syncViewButtons();this.updateHUD();this.drawMinimap();
   },
 
   startCountdown(cb) {
-    const el = $('countdown');
-    let n = 3;
-    el.classList.remove('hidden');
-    const tick = () => {
-      if (n > 0) {
-        el.textContent = n;
-        Sound.tone(440, 0.2, 'square', 0.2);
-        n--; setTimeout(tick, 1000);
-      } else {
-        el.textContent = 'GO!';
-        Sound.tone(880, 0.5, 'square', 0.25);
-        setTimeout(() => el.classList.add('hidden'), 800);
-        cb();
-      }
-    };
-    tick();
+    this.countdownState={left:3,shown:0,cb};this.player.frozen=true;
+    $('countdown').classList.remove('hidden');$('countdown').textContent='3';
+  },
+  updateCountdown(dt) {
+    const cd=this.countdownState;if(!cd)return;
+    cd.left-=dt;const n=Math.ceil(cd.left);
+    if(n>0&&n!==cd.shown){cd.shown=n;$('countdown').textContent=n;Sound.tone(440,.15,'triangle',.1);}
+    if(cd.left<=0&&cd.cb){const cb=cd.cb;cd.cb=null;this.player.frozen=false;$('countdown').textContent='GO!';cb();}
+    if(cd.left<-.8){this.countdownState=null;$('countdown').classList.add('hidden');}
   },
 
   togglePause() {
     if (!this.running) return;
     this.paused = !this.paused;
+    this.keys={};$('touchControls').classList.toggle('hidden',this.paused);
     if (this.paused) UI.show('screenPause');
     else UI.show(null);
   },
 
   quitToMenu() {
+    this.session=(this.session||0)+1;this.countdownState=null;this.resultState=null;this.keys={};
+    $('countdown').classList.add('hidden');$('touchControls').classList.add('hidden');
+    document.body.classList.remove('lesson-active');
     this.running = false;
     this.mode = null;
     $('hud').classList.add('hidden');
@@ -331,7 +392,7 @@ const Game = {
 
   showResults(title, bodyHtml) {
     Render.spawnConfetti(140);
-    setTimeout(() => {
+    this.resultState={left:1.6,finish:()=>{
       this.running = false;
       $('hud').classList.add('hidden');
       $('minimap').style.display = 'none';
@@ -339,10 +400,12 @@ const Game = {
       $('resultBody').innerHTML = bodyHtml;
       UI.show('screenResults');
       UI.refreshStars();
-    }, 1600);
+      $('touchControls').classList.add('hidden');
+    }};
   },
 
   onBoatEvent(name, data) {
+    this.mode?.onBoatEvent(name,data);
     const p = this.player;
     if (name === 'tackDone') {
       Progress.data.counters.tacks++;
@@ -367,7 +430,7 @@ const Game = {
       if (data.hard) {
         Sound.thunk();
         Render.floatText(p.x, p.y, '💥 CRASH GYBE!');
-        this.coach.say('Whoa! CRASH GYBE! The boom slammed across! Pull the sail in (W) a bit before you gybe. 🤕', 6, 'crashgybe');
+        this.coach.say('The boom swung across hard. Bring the sail toward the middle before the stern crosses the wind, then ease it on the new side.', 6, 'crashgybe');
         this.cleanTackStreak = 0;
       } else {
         Progress.data.counters.cleanGybes++;
@@ -421,7 +484,7 @@ const Game = {
   updateHUD() {
     const p = this.player, w = this.wind;
     // wind arrow: in boat view, relative to your bow (up = dead ahead); in bird view, screen-absolute
-    const travel = this.view === 'fp' ? angDiff(p.heading, angNorm(w.from + Math.PI)) : angNorm(w.from + Math.PI);
+    const travel = this.view !== 'top' ? angDiff(p.heading, angNorm(w.from + Math.PI)) : angNorm(w.from + Math.PI);
     const deg = travel * DEG - 90; // ➤ points right at 0
     $('windArrow').style.setProperty('--wa', deg + 'deg');
     $('windKn').textContent = w.kn.toFixed(0) + ' kn';
@@ -429,6 +492,15 @@ const Game = {
     $('speedFill').style.width = clamp(p.kn / p.p.maxKn * 100, 0, 100) + '%';
     $('rudderTick').style.left = (50 + p.rudder * 42) + '%';
     $('sheetFill').style.width = (p.sheet * 100) + '%';
+    $('sheetPercent').textContent=Math.round(p.sheet*100)+'% in';
+    $('idealTrim').style.left=SailingGuide.idealSheet(p,w)*100+'%';
+    $('idealTrim').classList.toggle('hidden',!this.showGuides);$('trimLegendGuide').classList.toggle('hidden',!this.showGuides);
+    const a=Math.abs(p.relWind(w))*DEG;
+    $('pointOfSail').textContent=SailingGuide.point(a,p.p.noGo);
+    $('windAngle').textContent=Math.round(a)+'° off the wind · '+w.kn.toFixed(0)+' kn';
+    $('tackSide').textContent=a<3?'Wind straight ahead':a>177?'Wind almost astern':p.relWind(w)>0?'Starboard tack · wind from your right':'Port tack · wind from your left';
+    const feedback=SailingGuide.feedback(p,w);$('trimFeedback').dataset.state=feedback.state;$('trimTitle').textContent=feedback.title;$('trimHint').textContent=feedback.text;
+    SailingGuide.drawDial($('windDial'),p,w,this.modeName==='lesson'&&!this.mode.done?this.mode.targetAngle:null);
     if (p.p.hasJib) {
       $('jibFill').style.width = (p.jibSheet * 100) + '%';
       const ja = $('jibAuto');
@@ -436,6 +508,15 @@ const Game = {
       ja.classList.toggle('off', !p.autoJib);
     }
     $('modeInfo').innerHTML = this.mode ? this.mode.hud() : '';
+    const target=this.mode?.wp?.()||this.mode?.nextRing?.();
+    $('destination').classList.toggle('hidden',!target||this.mode.done);
+    if(target){
+      const bearing=bearingTo(p.x,p.y,target.x,target.y);
+      const relative=this.view==='top'?bearing:angDiff(p.heading+(this.scene3d?.yaw||0),bearing);
+      $('destinationArrow').style.transform=`rotate(${relative*DEG}deg)`;
+      const upwind=Math.abs(angDiff(w.from,bearing))*DEG<p.p.noGo;
+      $('destinationText').textContent=`${target.label||'Next ring'} · ${Math.round(dist(p.x,p.y,target.x,target.y))} m${upwind?' · tack upwind':''}`;
+    }
     if (this.modeName === 'battle') $('soakFill').style.width = clamp(p.soak, 0, 100) + '%';
   },
 
@@ -445,6 +526,7 @@ const Game = {
     if (!this.mode) return;
     // collect points of interest
     const pts = [{ x: this.player.x, y: this.player.y }];
+    if(this.mode.trail)pts.push(...this.mode.trail);
     if (this.mode.course) for (const m of this.mode.course.marks) pts.push(m);
     if (this.mode.rings) for (const r of this.mode.rings) if (!r.got) pts.push(r);
     if (this.mode.ducks) for (const d of this.mode.ducks) pts.push(d);
@@ -455,6 +537,7 @@ const Game = {
     minX -= pad; minY -= pad; maxX += pad; maxY += pad;
     const scale = Math.min(S / (maxX - minX), S / (maxY - minY));
     const toMM = (x, y) => ({ x: (x - minX) * scale + (S - (maxX - minX) * scale) / 2, y: (y - minY) * scale + (S - (maxY - minY) * scale) / 2 });
+    if(this.mode.trail){ctx.strokeStyle='#e5c788';ctx.lineWidth=1.5;ctx.beginPath();this.mode.trail.forEach((p,i)=>{const s=toMM(p.x,p.y);if(i)ctx.lineTo(s.x,s.y);else ctx.moveTo(s.x,s.y);});ctx.stroke();}
     // wind arrow in corner
     ctx.save();
     ctx.translate(20, 20);
@@ -510,10 +593,11 @@ const Game = {
     requestAnimationFrame(tt => this.frame(tt));
     const dt = clamp((t - this.lastT) / 1000, 0, 0.05);
     this.lastT = t;
-    Render.t += dt;
+    if(!this.running||!this.paused){Render.t+=dt;this.visualTime+=dt;}
 
     if (this.running && !this.paused) {
       this.wind.update(dt);
+      this.updateCountdown(dt);
       this.handleInput(dt);
       this.player.update(dt, this.wind);
       if (this.mode) this.mode.update(dt);
@@ -532,6 +616,7 @@ const Game = {
       Render.follow(this.player, dt);
       this.updateHUD();
       this.drawMinimap();
+      if(this.resultState){this.resultState.left-=dt;if(this.resultState.left<=0){const result=this.resultState;this.resultState=null;result.finish();}}
     } else if (!this.running) {
       // menu backdrop: gentle drifting camera + demo boat
       this.wind.update(dt);
@@ -542,8 +627,19 @@ const Game = {
 
     Render.updateEffects(dt);
     // ---- draw world ----
-    if (this.running && this.mode && this.view === 'fp') {
-      FP.draw(this);
+    const use3D=this.scene3d&&(!this.running||this.view!=='top');
+    $('ocean').hidden=!use3D;
+    if (use3D) {
+      Render.ctx.clearRect(0,0,Render.W,Render.H);
+      this.scene3d.draw(this,dt);
+      for(const list of [this.mode?.racers,this.mode?.enemies])for(const r of list||[]){
+        const b=r.boat;if(dist(this.player.x,this.player.y,b.x,b.y)>250)continue;
+        const s=this.scene3d.project(b.x,b.y,b.p.lengthM*1.1+1);if(!s)continue;
+        const c=Render.ctx;c.save();c.font='600 12px system-ui';c.textAlign='center';c.fillStyle='#f6efd9';c.shadowColor='#123c4d';c.shadowBlur=5;c.fillText(b.knockedOut>0?'Soaked out!':b.nameTag,s.x,s.y);c.shadowBlur=0;
+        if(this.modeName==='battle'){c.fillStyle='#153c4ed9';c.fillRect(s.x-23,s.y+7,46,4);c.fillStyle='#92dbe8';c.fillRect(s.x-23,s.y+7,46*clamp(b.soak/100,0,1),4);}c.restore();
+      }
+      // Floating scores are projected through the same camera as the boat.
+      for(const f of Render.floaters){const s=this.scene3d.project(f.x,f.y,2);if(!s)continue;const c=Render.ctx;c.save();c.globalAlpha=clamp(1-f.life/1.8,0,1);c.font='600 18px system-ui';c.textAlign='center';c.fillStyle=f.color;c.fillText(f.text,s.x,s.y-f.life*20);c.restore();}
     } else {
       Render.drawWater(this.wind);
       if (this.running && this.mode) {

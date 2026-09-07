@@ -72,6 +72,7 @@ class Wind {
     this.t = 0;
   }
   update(dt) {
+    if (this.steady) { this.kn = this.baseKn; this.from = this.baseFrom; return; }
     this.t += dt;
     this.kn = Math.max(1, this.baseKn * (1 + 0.25 * this.nKn(this.t * 0.12)));
     this.from = angNorm(this.baseFrom + 10 * RAD * this.nDir(this.t * 0.05));
@@ -107,7 +108,7 @@ class Boat {
     this.knockedOut = 0;
     this.trail = [];
     // tack/gybe tracking
-    this._prevRel = 0;
+    this._prevRel = null;
     this._zoneEnterSpd = null;
     this.onEvent = null;      // callback(name, data)
   }
@@ -196,20 +197,25 @@ class Boat {
     const boomSwingRate = Math.abs(this.boomAng - prevBoom) / Math.max(dt, 1e-4);
 
     // ----- tack / gybe detection -----
-    if (Math.sign(rel) !== Math.sign(this._prevRel) && Math.abs(rel) > 1e-4 && Math.abs(this._prevRel) > 1e-4) {
+    if (this._prevRel !== null && Math.sign(rel) !== Math.sign(this._prevRel) && Math.abs(rel) > 1e-4 && Math.abs(this._prevRel) > 1e-4) {
       if (aDeg < 90) this._emit('crossBow');
       else this._emit('crossStern', { hard: boomSwingRate > 2.0 && wind.kn > 9 && this.sheet < 0.35 });
     }
     // entering / leaving no-go zone for clean tack scoring
-    if (inZone && this._zoneEnterSpd === null) { this._zoneEnterSpd = Math.max(this.spd, 0.01); this._zoneEnterT = 0; this._crossedBow = false; }
+    if (inZone && this._zoneEnterSpd === null) {
+      this._zoneEnterSpd = Math.max(this.spd, 0.01);
+      this._zoneEnterT = 0;
+      this._zoneEnterSide = side;
+      this._wasInIrons = false;
+    }
     if (this._zoneEnterSpd !== null) {
       this._zoneEnterT += dt;
-      if (aDeg < 20) this._crossedBow = true;
+      if (this.ironsTime > 3.5) this._wasInIrons = true;
       if (!inZone) {
-        if (this._crossedBow && this._zoneEnterT < 8) {
+        if (side !== this._zoneEnterSide && this._zoneEnterT < 8) {
           this._emit('tackDone', { keep: this.spd / this._zoneEnterSpd, quick: this._zoneEnterT < 5 });
         }
-        if (this.ironsTime > 3.5) this._emit('ironsEscape');
+        if (this._wasInIrons) this._emit('ironsEscape');
         this._zoneEnterSpd = null;
       }
     }
