@@ -1,0 +1,13 @@
+{
+  "name": "sailquest",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A playful sailing simulator with 3D views and guided sailing lessons",
+  "scripts": {
+    "dev": "node scripts/serve.cjs",
+    "build": "node scripts/build.cjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "dependencies": { "three": "0.180.0" },
+  "devDependencies": { "esbuild": "0.25.10", "@playwright/test": "1.56.1" }
+}

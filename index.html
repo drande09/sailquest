@@ -3,20 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SailQuest ⛵ — Learn to Sail!</title>
+<title>SailQuest — Find your feel for sailing</title>
+<meta name="description" content="Learn to tack, reach, run and gybe in a playful 3D sailing simulator with guided lessons and a first-person helm view.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23183e4b'/%3E%3Cpath d='M16 4v18H5zM18 8l9 14h-9z' fill='%23f1c578'/%3E%3Cpath d='M5 25h23l-5 4H9z' fill='%23f5f0e3'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<canvas id="ocean" aria-label="3D sailing view. Drag to look around, double-click to look ahead."></canvas>
 <canvas id="sea"></canvas>
 <canvas id="minimap" width="170" height="170"></canvas>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
+  <div class="gameBrand"><span class="brandIcon">◭</span> SAILQUEST <span>SAILING CLUB</span></div>
   <div id="windWidget">
-    <div class="label">WIND</div>
+    <div class="label">AIR MOVES THIS WAY</div>
     <div id="windRose"><div id="windArrow">➤</div></div>
     <div id="windKn">8 kn</div>
   </div>
+  <div id="sailingPanel">
+    <div class="instrumentLabel">YOUR COURSE & THE WIND</div>
+    <canvas id="windDial" width="220" height="220" aria-label="Wind-relative course: the red wedge is the no-go zone; the gold line is your lesson heading."></canvas>
+    <div id="pointOfSail">Beam reach</div>
+    <div id="windAngle">90° off the wind</div>
+    <div id="tackSide">Wind over port</div>
+    <div id="trimFeedback" data-state="good"><span class="statusDot"></span><span id="trimTitle">Sail drawing well</span></div>
+    <div id="trimHint">Hold your course.</div>
+  </div>
+  <div id="lessonPanel" class="hidden">
+    <div id="lessonCount" class="instrumentLabel"></div>
+    <h2 id="lessonTitle"></h2><p id="lessonText"></p>
+    <progress id="lessonProgress" max="6" value="0" aria-label="Lesson step progress"></progress>
+    <div id="lessonFeedback" role="status"></div>
+    <div class="lessonActions"><button id="lessonReset">↺ Try again</button><button id="lessonContinue" class="hidden">Next lesson →</button></div>
+  </div>
+  <div id="viewControls" role="group" aria-label="Camera view">
+    <button data-view="chase" aria-pressed="true">3D chase</button>
+    <button data-view="fp" aria-pressed="false">First person</button>
+    <button data-view="top" aria-pressed="false">Overhead</button>
+  </div>
+  <div id="lookControls"><button id="lookLeft" aria-label="Look to port">← Look</button><button id="lookAhead">Look ahead</button><button id="lookRight" aria-label="Look to starboard">Look →</button></div>
+  <div id="viewHint">Drag the sea to look around · V changes view</div>
+  <div id="destination" class="hidden"><span id="destinationArrow">↑</span><span id="destinationText"></span></div>
   <div id="starBox">⭐ <span id="starTotal">0</span></div>
   <div id="modeInfo"></div>
   <div id="speedBox">
@@ -26,28 +54,33 @@
   </div>
   <div id="controlsBox">
     <div class="ctlRow"><span class="key">◀ A</span><div id="rudderBar"><div id="rudderTick"></div></div><span class="key">D ▶</span></div>
-    <div class="ctlRow"><span class="key">S out</span><div id="sheetBar"><div id="sheetFill"></div></div><span class="key">W in</span></div>
+    <div class="ctlRow"><span class="key">S out</span><div id="sheetBar"><div id="sheetFill"></div><div id="idealTrim" title="Suggested trim"></div></div><span class="key">W in</span></div>
+    <div class="trimLegend">MAINSAIL <span id="sheetPercent">50% in</span><span id="trimLegendGuide">│ gold = suggested trim</span></div>
     <div class="ctlRow" id="jibRow"><span class="key">Q out</span><div id="jibBar"><div id="jibFill"></div></div><span class="key">E in</span> <span id="jibAuto" class="key auto">AUTO</span></div>
   </div>
   <div id="coach" class="hidden"><span id="coachFace">🐦</span><div id="coachText"></div></div>
   <div id="soakBox" class="hidden"><div class="label">💦 SOAKED</div><div id="soakBar"><div id="soakFill"></div></div></div>
-  <button id="pauseBtn">☰</button>
-  <button id="viewBtn" title="Switch view (V)">👁️</button>
+  <button id="pauseBtn" aria-label="Pause game">Ⅱ</button>
+  <button id="viewBtn" title="Switch view (V)" class="hidden">View</button>
   <div id="freeWind" class="hidden">Wind: <button id="windDown">–</button><span id="freeWindKn">8</span><button id="windUp">+</button></div>
 </div>
 
 <!-- Menus -->
 <div id="overlay">
   <div id="screenMain" class="screen">
-    <h1 class="title">⛵ SailQuest</h1>
-    <div class="subtitle">Learn to sail like a champion!</div>
-    <div id="menuBoat"></div>
-    <div class="btnCol">
-      <button class="big" data-mode="free">🌊 Free Sail</button>
-      <button class="big" data-mode="rings">💍 Ring Run</button>
-      <button class="big" data-mode="trial">⏱️ Time Trial</button>
-      <button class="big" data-mode="race">🏁 Race!</button>
-      <button class="big" data-mode="battle">💦 Water Battle</button>
+    <div class="eyebrow">THE WATER IS YOUR CLASSROOM</div>
+    <h1 class="title">SailQuest<span class="titleDot">.</span></h1>
+    <div class="subtitle">Find your feel for sailing.</div>
+    <p class="menuIntro">Catch the breeze. Read the sail. Learn what happens when you turn.</p>
+    <div id="menuBoat" class="hidden"></div>
+    <button id="btnLearn" class="learnButton"><span>Start sailing school<small>Reach · Tack · Run · Gybe</small></span><span>↗</span></button>
+    <div class="menuDivider">OR TAKE THE HELM</div>
+    <div class="btnCol modeGrid">
+      <button class="big" data-mode="free">Free sail <span>↗</span></button>
+      <button class="big" data-mode="rings">Ring run <span>◎</span></button>
+      <button class="big" data-mode="trial">Time trial <span>◷</span></button>
+      <button class="big" data-mode="race">Regatta <span>⚑</span></button>
+      <button class="big" data-mode="battle">Water battle <span>≈</span></button>
     </div>
     <div class="btnRow">
       <button id="btnBoats">⛵ Boats</button>
@@ -55,7 +88,15 @@
       <button id="btnMissions">🏅 Missions</button>
       <button id="btnHelp">❓ How to Sail</button>
     </div>
-    <div class="menuStars">⭐ <span id="menuStarTotal">0</span> Sea Stars</div>
+    <div class="menuFooter"><div class="menuStars">✦ <span id="menuStarTotal">0</span> sea stars</div><div>3D · FIRST PERSON · OVERHEAD</div></div>
+    <div id="graphicsNotice" class="hidden" role="status">3D is unavailable on this device. Overhead sailing and all lessons are ready.</div>
+  </div>
+
+  <div id="screenLessons" class="screen hidden">
+    <div class="eyebrow">SAILING SCHOOL</div><h2>Learn by feeling it.</h2>
+    <p class="lessonIntro">Steady wind. No timer. You steer and trim every step.</p>
+    <div id="lessonGrid"></div>
+    <button class="backBtn">← Back</button>
   </div>
 
   <div id="screenBoats" class="screen hidden">
@@ -90,10 +131,13 @@
     <div id="helpBody">
       <p><b>🌬️ The wind arrow shows where the wind is blowing.</b> Sails catch the wind and push you along!</p>
       <p><b>🚫 The No-Go Zone:</b> You can NEVER sail straight into the wind — your sail just flaps and you stop! The red cone shows the no-go zone. To go upwind, <b>zigzag</b>: sail at an angle, then <b>TACK</b> (turn your bow through the wind) and sail at an angle the other way.</p>
-      <p><b>⛵ Trim your sail:</b> Pull it <b>in (W)</b> when sailing toward the wind, let it <b>out (S)</b> when sailing away from the wind. If the sail flaps — pull in! If you feel slow and tipped over — let out!</p>
+      <p><b>⛵ Trim your sail:</b> Pull it <b>in (W)</b> as you head toward the wind, and let it <b>out (S)</b> as you turn away. If it flaps outside the no-go zone, pull in until it fills. Inside the no-go zone, steer away from the wind first.</p>
       <p><b>🔁 Tacking:</b> turning your <i>front</i> through the wind. Do it with speed so you don't get stuck "in irons"!</p>
-      <p><b>🔄 Gybing:</b> turning your <i>back</i> through the wind. Watch out — the boom swings across! Pull the sail in a bit first for a smooth gybe.</p>
-      <p><b>Controls:</b> <span class="key">A</span>/<span class="key">D</span> or <span class="key">◀</span>/<span class="key">▶</span> steer · <span class="key">W</span>/<span class="key">▲</span> sail in · <span class="key">S</span>/<span class="key">▼</span> sail out · <span class="key">Q</span>/<span class="key">E</span> jib (big boats) · <span class="key">SPACE</span> water gun · <span class="key">V</span> switch boat-view / bird-view · <span class="key">N</span> no-go cone on/off · <span class="key">M</span> sound</p>
+      <p><b>🔄 Gybing:</b> turning your <i>stern</i> through the wind. Bring the mainsail toward the middle to control the boom, turn smoothly, then ease the sail on the new side.</p>
+      <p><b>Points of sail:</b> A beam reach puts the wind at your side (90°). A close reach heads more toward the wind; a broad reach heads farther away. Running puts the wind behind you. The wind dial always puts the wind source at the top and turns the little boat with your heading.</p>
+      <p><b>Views:</b> Choose 3D chase to watch the whole boat, First person to sit at the helm, or Overhead to see your upwind zigzags. Drag the water to look around, and use Look ahead to recenter.</p>
+      <p><b>Controls:</b> <span class="key">A</span>/<span class="key">D</span> or left/right arrows steer the <b>boat</b> left/right · <span class="key">W</span> sail in · <span class="key">S</span> sail out · <span class="key">Q</span>/<span class="key">E</span> jib · <span class="key">SPACE</span> water gun · <span class="key">V</span> view · <span class="key">N</span> learning guides · <span class="key">M</span> sound.</p>
+      <p class="helpNote">A simplified sailing trainer: wind and trim are made forgiving so you can practice. A real tiller moves opposite the bow's turn. Practice on the water with an instructor; boat handling varies by boat and conditions.</p>
     </div>
     <button class="backBtn">⬅ Back</button>
   </div>
@@ -109,6 +153,11 @@
 
   <div id="screenPause" class="screen hidden">
     <h2>Paused</h2>
+    <div class="settings">
+      <label><input type="checkbox" id="guideToggle" checked> Wind arrows & suggested trim</label>
+      <label><input type="checkbox" id="motionToggle"> Gentle motion</label>
+      <label>Graphics <select id="qualitySelect"><option value="high">Detailed</option><option value="low">Lighter on this device</option></select></label>
+    </div>
     <div class="btnCol">
       <button id="btnResume" class="big">▶ Keep Sailing</button>
       <button id="btnRestart" class="big">🔁 Restart</button>
@@ -119,6 +168,10 @@
 
 <div id="toastLayer"></div>
 <div id="countdown" class="hidden"></div>
+<div id="touchControls" class="hidden" aria-label="Sailing touch controls">
+  <div><button data-key="a" aria-label="Steer left">◀</button><button data-key="d" aria-label="Steer right">▶</button></div>
+  <div><button data-key="s">Sail out</button><button data-key="w">Sail in</button><button data-key=" " id="touchFire" class="hidden">Squirt</button></div>
+</div>
 
 <script src="js/util.js"></script>
 <script src="js/progress.js"></script>
@@ -127,6 +180,8 @@
 <script src="js/render.js"></script>
 <script src="js/fpview.js"></script>
 <script src="js/modes.js"></script>
+<script src="js/lessons.js"></script>
+<script src="js/scene3d.bundle.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
